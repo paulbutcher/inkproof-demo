@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Inkproof.Demo
 import Inkproof.Viewport
+import Inkproof.Scene
 import InkproofTools.Test.Harness
 import InkproofTools.Test.Platform
 
@@ -105,6 +106,48 @@ def robotTest : Except String Unit := do
     if let some e := Robot.run robotConfig 4 seed 1000 then
       check false s!"seed {seed}: {e}"
 
+/-- A column of flat samples with one spike that is not the first sample: naive decimation draws the first sample and
+loses the spike, the guaranteed reduction keeps it, and switching back restores it. -/
+private def spikeSeries : List Inkproof.Scene.Pt :=
+  [⟨0, 1⟩, ⟨1/4, 1⟩, ⟨1/2, 50⟩, ⟨3/4, 1⟩, ⟨1, 1⟩, ⟨5/4, 2⟩]
+
+private def peak (xs : List Inkproof.Scene.Pt) : Option Rat := Inspect.highest xs
+
+private def decimationTest : Except String Unit := do
+  let d := Inspect.Decimation.naive
+  check (peak (d.apply spikeSeries) == some 1) "naive decimation loses the spike"
+  check (peak (d.toggle.apply spikeSeries) == some 50) "guaranteed decimation keeps the spike"
+  check (peak (d.toggle.toggle.apply spikeSeries) == some 1) "toggling twice is the naive view again"
+  for seed in [1:201] do
+    let (n, s) := Robot.below seed 30
+    let (xs, _) := (List.range (n + 1)).foldl (fun (acc, s) i =>
+      let (v, s) := Robot.below s 100
+      let (j, s) := Robot.below s 3
+      (acc ++ [(⟨(i : Rat) / 4 + j / 16, v⟩ : Inkproof.Scene.Pt)], s)) (([] : List Inkproof.Scene.Pt), s)
+    let kept := Inspect.Decimation.guaranteed.apply xs
+    for c in List.range ((n + 1) / 4 + 1) do
+      let r := Inspect.inspect xs c
+      check r.agrees s!"seed {seed} column {c}: raw {r.lowest} {r.highest}, drawn {r.drawnLowest} {r.drawnHighest}"
+      check (r.raw.all fun p => p.x.floor == c) s!"seed {seed} column {c}: raw samples lie in the column"
+      check (match r.naiveHighest, r.highest with | some a, some b => a ≤ b | _, _ => true)
+        s!"seed {seed} column {c}: naive never exceeds the true peak"
+    check (kept.all fun p => xs.any fun q => q.y == p.y) s!"seed {seed}: guaranteed decimation draws no value that is not a sample's"
+
+private def inspectorTest : Except String Unit := do
+  let r := Inspect.inspect spikeSeries 0
+  check (r.raw.length == 4) "raw samples of the column"
+  check (r.lowest == some 1 && r.highest == some 50) "independent extremes"
+  check r.naiveLoses "naive decimation loses this column's peak"
+  check (!(Inspect.inspect (spikeSeries.take 1) 0).naiveLoses) "a one-sample column loses nothing"
+  let statement := "∀ (l : List Pt), True"
+  let l : Library := { lib with apiLock := s!"theorem {Inspect.guaranteeName} : {statement}" }
+  check (Inspect.guaranteeStatement l == some statement) "statement comes from the lock file"
+  check (Inspect.guaranteeStatement lib == none) "absent theorem is not invented"
+  let html := r.html (Inspect.guaranteeStatement l)
+  check ((html.splitOn Inspect.guaranteeText).length > 1) "page gives the plain-English statement"
+  check ((html.splitOn "∀ (l : List Pt)").length > 1) "page gives the formal statement"
+
 def main (args : List String) : IO UInt32 :=
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩,
     platformTest (args.contains "--expect-wasm")]
