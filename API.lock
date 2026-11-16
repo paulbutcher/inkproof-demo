@@ -143,6 +143,26 @@ constructor Inkproof.Demo.TheoremEntry.mk : String → String → String → Str
 field Inkproof.Demo.TheoremEntry.name : Inkproof.Demo.TheoremEntry → String
 field Inkproof.Demo.TheoremEntry.statement : Inkproof.Demo.TheoremEntry → String
 field Inkproof.Demo.TheoremEntry.url : Inkproof.Demo.TheoremEntry → String
+def Inkproof.Demo.Tiles.decodeNode : List UInt8 → Option (Option (Int × Int))
+theorem Inkproof.Demo.Tiles.decodeNode_encodeNode : ∀ (e : Inkproof.Demo.Seismic.Extent) (a b : Int), Inkproof.Demo.Stack.span e = Option.some (a, b) → -32767 ≤ a → a < 32768 → -32768 ≤ b → b < 32768 → Inkproof.Demo.Tiles.decodeNode (Inkproof.Demo.Tiles.encodeNode e) = Option.some (Option.some (a, b))
+theorem Inkproof.Demo.Tiles.decodeNode_gap : ∀ (e : Inkproof.Demo.Seismic.Extent), Inkproof.Demo.Stack.span e = Option.none → Inkproof.Demo.Tiles.decodeNode (Inkproof.Demo.Tiles.encodeNode e) = Option.some Option.none
+def Inkproof.Demo.Tiles.decodeWord : Nat → Int
+theorem Inkproof.Demo.Tiles.decodeWord_encodeWord : ∀ (v : Int), -32768 ≤ v → v < 32768 → Inkproof.Demo.Tiles.decodeWord (Inkproof.Demo.Tiles.encodeWord v) = v
+def Inkproof.Demo.Tiles.encodeNode : Inkproof.Demo.Seismic.Extent → List UInt8
+theorem Inkproof.Demo.Tiles.encodeNode_length : ∀ (e : Inkproof.Demo.Seismic.Extent), (Inkproof.Demo.Tiles.encodeNode e).length = 4
+def Inkproof.Demo.Tiles.encodeWord : Int → Nat
+def Inkproof.Demo.Tiles.gapWord : Int
+def Inkproof.Demo.Tiles.manifest : Array (Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent) → String
+def Inkproof.Demo.Tiles.stationTiles : Nat → Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent → Array (String × ByteArray)
+theorem Inkproof.Demo.Tiles.stationTiles_size : ∀ (s : Nat) (p : Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent), (Inkproof.Demo.Tiles.stationTiles s p).size = (List.map Inkproof.Demo.Tiles.tileCount p.levels.toList).sum
+def Inkproof.Demo.Tiles.tileBytes : Array Inkproof.Demo.Seismic.Extent → Nat → ByteArray
+theorem Inkproof.Demo.Tiles.tileBytes_size : ∀ (level : Array Inkproof.Demo.Seismic.Extent) (j : Nat), (Inkproof.Demo.Tiles.tileBytes level j).size = 4 * (Min.min ((j + 1) * Inkproof.Demo.Tiles.tileSize) level.size - j * Inkproof.Demo.Tiles.tileSize)
+def Inkproof.Demo.Tiles.tileCount : Array Inkproof.Demo.Seismic.Extent → Nat
+theorem Inkproof.Demo.Tiles.tileCount_mul : ∀ (level : Array Inkproof.Demo.Seismic.Extent), level.size ≤ Inkproof.Demo.Tiles.tileCount level * Inkproof.Demo.Tiles.tileSize
+def Inkproof.Demo.Tiles.tilePath : Nat → Nat → Nat → String
+theorem Inkproof.Demo.Tiles.tilePath_eq : ∀ (s k j : Nat), Inkproof.Demo.Tiles.tilePath s k j = ToString.toString "s" ++ ToString.toString s ++ ToString.toString "/l" ++ ToString.toString k ++ ToString.toString "/t" ++ ToString.toString j ++ ToString.toString ".bin"
+def Inkproof.Demo.Tiles.tileSize : Nat
+theorem Inkproof.Demo.Tiles.toNat_bytes : ∀ (w : Nat), w < 65536 → (w % 256).toUInt8.toNat + 256 * (w / 256).toUInt8.toNat = w
 structure Inkproof.Demo.View.Range : Type
 def Inkproof.Demo.View.Range.Valid : Nat → Inkproof.Demo.View.Range → Prop
 field Inkproof.Demo.View.Range.hi : Inkproof.Demo.View.Range → Nat

@@ -199,7 +199,17 @@ private def stackTest : Except String Unit := do
   let coarse := Stack.traces (st.pyramid n) 0 n 6 200 1000
   check (coarse.length == 2) s!"only the column wholly inside an outage is a gap, got {coarse.length} runs"
 
+private def tilesTest : Except String Unit := do
+  let st : Seismic.Station := { seed := 5, outages := [(300, 700), (1500, 1600)] }
+  let p := st.pyramid 2048
+  for (level, k) in p.levels.toList.zipIdx do
+    let nodes := (List.range (Tiles.tileCount level)).flatMap fun j =>
+      let bs := (Tiles.tileBytes level j).toList
+      (List.range (bs.length / 4)).map fun i => (Tiles.decodeNode (bs.drop (4 * i) |>.take 4)).getD none
+    check (nodes == level.toList.map Stack.span) s!"level {k}: tiles decode to the pyramid's nodes"
+  check ((Tiles.stationTiles 0 p).size == (p.levels.toList.map Tiles.tileCount).sum) "one file per tile"
+
 def main (args : List String) : IO UInt32 :=
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩,
     platformTest (args.contains "--expect-wasm")]

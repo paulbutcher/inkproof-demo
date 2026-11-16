@@ -29,6 +29,10 @@ script test do
   unless ← (app / "node_modules" / "playwright").pathExists do
     IO.eprintln "::warning::Browser tests skipped: run `npm ci` in app/"
     return 0
+  let tiles ← IO.Process.spawn
+    { cmd := "lake", args := #["exe", "build-tiles", (app / "web" / "public" / "tiles").toString], cwd := __dir__ / ".." }
+  let code ← tiles.wait
+  if code != 0 then return code
   for (name, cmd, args) in #[("build", "npx", #["vite", "build"]), ("browser", "node", #["--test", "browser.test.mjs"])] do
     IO.println s!"== {name}"
     let child ← IO.Process.spawn { cmd, args, cwd := app, env := #[("LASM_EDITOR", some "0")] }

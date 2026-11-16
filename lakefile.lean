@@ -30,3 +30,7 @@ script tests do
 lean_exe «theorem-index» where
   root := `TheoremIndexMain
   srcDir := "gen"
+
+lean_exe «build-tiles» where
+  root := `BuildTilesMain
+  srcDir := "gen"
