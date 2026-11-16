@@ -7,6 +7,7 @@ import Inkproof.Demo.Inspect
 import Inkproof.Demo.Robot
 import Inkproof.Demo.Seismic
 import Inkproof.Demo.Stack
+import Inkproof.Demo.View
 import Inkproof.Demo.Series
 
 /-! # Inkproof.Demo -/

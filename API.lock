@@ -143,6 +143,24 @@ constructor Inkproof.Demo.TheoremEntry.mk : String → String → String → Str
 field Inkproof.Demo.TheoremEntry.name : Inkproof.Demo.TheoremEntry → String
 field Inkproof.Demo.TheoremEntry.statement : Inkproof.Demo.TheoremEntry → String
 field Inkproof.Demo.TheoremEntry.url : Inkproof.Demo.TheoremEntry → String
+structure Inkproof.Demo.View.Range : Type
+def Inkproof.Demo.View.Range.Valid : Nat → Inkproof.Demo.View.Range → Prop
+field Inkproof.Demo.View.Range.hi : Inkproof.Demo.View.Range → Nat
+field Inkproof.Demo.View.Range.lo : Inkproof.Demo.View.Range → Nat
+constructor Inkproof.Demo.View.Range.mk : Nat → Nat → Inkproof.Demo.View.Range
+def Inkproof.Demo.View.Range.ofInterval : Nat → Inkproof.Viewport.Interval Rat → Inkproof.Demo.View.Range
+theorem Inkproof.Demo.View.Range.ofInterval_hi : ∀ (n : Nat) (a : Inkproof.Viewport.Interval Rat), (Inkproof.Demo.View.Range.ofInterval n a).hi = Min.min n (Max.max ((Inkproof.Demo.View.Range.ofInterval n a).lo + 1) (a.start + a.span).ceil.toNat)
+theorem Inkproof.Demo.View.Range.ofInterval_lo : ∀ (n : Nat) (a : Inkproof.Viewport.Interval Rat), (Inkproof.Demo.View.Range.ofInterval n a).lo = Min.min (n - 1) a.start.floor.toNat
+theorem Inkproof.Demo.View.Range.ofInterval_valid : ∀ (n : Nat), 0 < n → ∀ (a : Inkproof.Viewport.Interval Rat), Inkproof.Demo.View.Range.Valid n (Inkproof.Demo.View.Range.ofInterval n a)
+def Inkproof.Demo.View.Range.width : Inkproof.Demo.View.Range → Nat
+theorem Inkproof.Demo.View.Range.width_eq : ∀ (r : Inkproof.Demo.View.Range), r.width = r.hi - r.lo
+def Inkproof.Demo.View.column : Inkproof.Demo.View.Range → Nat → Nat → Nat
+theorem Inkproof.Demo.View.column_eq : ∀ (r : Inkproof.Demo.View.Range) (cols t : Nat), Inkproof.Demo.View.column r cols t = (t - r.lo) * cols / (r.hi - r.lo)
+theorem Inkproof.Demo.View.column_lt : ∀ (r : Inkproof.Demo.View.Range) (cols t : Nat), 0 < cols → r.lo ≤ t → t < r.hi → Inkproof.Demo.View.column r cols t < cols
+def Inkproof.Demo.View.inView : Inkproof.Demo.View.Range → Array Inkproof.Demo.Seismic.Quake → Array Inkproof.Demo.Seismic.Quake
+instance Inkproof.Demo.View.instDecidableEqRange : DecidableEq Inkproof.Demo.View.Range
+def Inkproof.Demo.View.instDecidableEqRange.decEq : (x x_1 : Inkproof.Demo.View.Range) → Decidable (x = x_1)
+theorem Inkproof.Demo.View.mem_inView : ∀ (r : Inkproof.Demo.View.Range) (qs : Array Inkproof.Demo.Seismic.Quake) (q : Inkproof.Demo.Seismic.Quake), q ∈ Inkproof.Demo.View.inView r qs ↔ q ∈ qs ∧ r.lo ≤ q.time ∧ q.time < r.hi
 def Inkproof.Demo.codeFiles : Array (String × String × String) → Array Inkproof.Demo.CodeFile
 def Inkproof.Demo.declares : String → String → Bool
 def Inkproof.Demo.escapeHtml : String → String

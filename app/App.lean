@@ -5,29 +5,72 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Lasm.UI
 import Inkproof.Demo
 
-open Lasm.UI Inkproof.Demo Inkproof.Demo.Inspect
+open Lasm.UI Inkproof.Demo Inkproof.Demo.Inspect Inkproof.Demo.View Inkproof.Viewport
+
+def sampleCount : Nat := 4096
+def chartCols : Nat := 400
+def trackHeight : Nat := 100
+
+def axisConfig : Interval.Config Rat :=
+  { length := chartCols, minSpan := 2, maxSpan := sampleCount, home := ⟨0, sampleCount⟩, keyZoom := 2, keyPan := 1 / 4 }
+
+def viewConfig : ViewConfig Rat := ⟨axisConfig, axisConfig⟩
 
 structure Model where
   mode : Decimation := .guaranteed
   column : Int := 0
+  view : View Rat := ⟨axisConfig.home, axisConfig.home⟩
 
 inductive Msg
   | toggle
   | pick (column : Int)
+  | zoomIn
+  | zoomOut
+  | panLeft
+  | panRight
+
+def stations : Array Seismic.Station :=
+  #[⟨1, [(900, 1300)]⟩, ⟨2, [(2000, 2600)]⟩, ⟨3, []⟩, ⟨4, [(300, 500), (3000, 3500)]⟩]
+
+def pyramids : Array (Inkproof.Core.Pyramid Seismic.Extent) := stations.map (·.pyramid sampleCount)
+
+def quakes : Array Seismic.Quake := #[⟨100, 3⟩, ⟨1000, 5⟩, ⟨2048, 4⟩, ⟨2049, 6⟩, ⟨3700, 7⟩]
 
 def series : List Inkproof.Scene.Pt := Series.samples 200 20
 
 def update : Msg → Model → Model
   | .toggle, m => { m with mode := m.mode.toggle }
   | .pick c, m => { m with column := c }
+  | .zoomIn, m => { m with view := View.step viewConfig m.view (.key .zoomIn) }
+  | .zoomOut, m => { m with view := View.step viewConfig m.view (.key .zoomOut) }
+  | .panLeft, m => { m with view := View.step viewConfig m.view (.key .left) }
+  | .panRight, m => { m with view := View.step viewConfig m.view (.key .right) }
 
 def modeName : Decimation → String
   | .guaranteed => "guaranteed"
   | .naive => "naive"
 
+def stacked (r : Range) : Html Msg :=
+  Svg.svg [attr "id" "stack", attr "viewBox" s!"0 0 {chartCols} {trackHeight * stations.size}",
+      attr "width" "800", attr "height" "400"]
+    ((pyramids.toList.zipIdx.flatMap fun (p, i) =>
+      (Stack.traces p r.lo r.hi chartCols trackHeight 1000).map fun pts =>
+        Svg.polygon [attr "class" "trace", attr "transform" s!"translate(0,{i * trackHeight})",
+          attr "fill" "steelblue", attr "points" pts] []) ++
+     ((inView r quakes).toList.map fun q =>
+      Svg.circle [attr "class" "quake", attr "cx" (toString (column r chartCols q.time)),
+        attr "cy" "8", attr "r" "4", attr "fill" "crimson"] []))
+
 def view (m : Model) : Html Msg :=
   let reading := inspect series m.column
   main_ [] [
+    div [] [
+      button [onClick .zoomIn, attr "id" "zoom-in"] [.text "Zoom in"],
+      button [onClick .zoomOut, attr "id" "zoom-out"] [.text "Zoom out"],
+      button [onClick .panLeft, attr "id" "pan-left"] [.text "Left"],
+      button [onClick .panRight, attr "id" "pan-right"] [.text "Right"],
+      span [attr "id" "range"] [.text s!"samples {(Range.ofInterval sampleCount m.view.x).lo} to {(Range.ofInterval sampleCount m.view.x).hi}"]],
+    stacked (Range.ofInterval sampleCount m.view.x),
     button [onClick .toggle, attr "id" "toggle"] [.text s!"Decimation: {modeName m.mode}"],
     Svg.svg [attr "id" "chart", attr "viewBox" "0 0 200 100", attr "width" "800", attr "height" "400"]
       [Svg.polyline [attr "fill" "none", attr "stroke" "steelblue",
