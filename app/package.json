@@ -1,0 +1,16 @@
+{
+  "name": "inkproof-demo-app",
+  "private": true,
+  "description": "Builds the Inkproof demo with Lasm for the browser and tests it in Chromium.",
+  "type": "module",
+  "devDependencies": {
+    "@lasm/cli": "0.8.0",
+    "playwright": "1.64.1",
+    "vite": "^8.3.8"
+  },
+  "dependencies": {
+    "inkproof-gpu-js": "file:../.lake/packages/inkproof-web/gpu-js",
+    "inkproof-web-element": "file:../.lake/packages/inkproof-web/shim/inkproof-web-element"
+  },
+  "engines": { "node": ">=24.0.0" }
+}
