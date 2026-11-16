@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Inkproof.Demo
 import Inkproof.Viewport
 import Inkproof.Scene
+import Inkproof.Gpu
 import Inkproof.Core.Proofs
 import InkproofTools.Test.Harness
 import InkproofTools.Test.Platform
@@ -209,7 +210,19 @@ private def tilesTest : Except String Unit := do
     check (nodes == level.toList.map Stack.span) s!"level {k}: tiles decode to the pyramid's nodes"
   check ((Tiles.stationTiles 0 p).size == (p.levels.toList.map Tiles.tileCount).sum) "one file per tile"
 
+private def drawTest : Except String Unit := do
+  let style : Inkproof.Scene.ScatterStyle := ⟨⟨1, ⟨200, 30, 30, 255⟩⟩, .circle, 4⟩
+  let proj : Inkproof.Scene.Projection Nat Nat := ⟨fun t => (t : Rat) / 10, fun m => 100 - (m : Rat) * 5⟩
+  for seed in [1:51] do
+    let (n, s) := Robot.below seed 20
+    let (qs, _) := (List.range n).foldl (fun (acc, s) i =>
+      let (m, s) := Robot.below s 9
+      (acc.push ⟨i * 7 + 3, m⟩, s)) ((#[] : Array Seismic.Quake), s)
+    let cmds := Draw.frame 0xffffffff 400 200 (Seismic.markers style proj qs)
+    let draws := cmds.filter (·.op == 5)
+    check (draws.length == n) s!"seed {seed}: {draws.length} draws for {n} quakes"
+
 def main (args : List String) : IO UInt32 :=
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩,
     platformTest (args.contains "--expect-wasm")]

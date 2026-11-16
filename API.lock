@@ -12,6 +12,13 @@ def Inkproof.Demo.CodeKind.ofNat : Nat → Inkproof.Demo.CodeKind
 theorem Inkproof.Demo.CodeKind.ofNat_ctorIdx : ∀ (x : Inkproof.Demo.CodeKind), Inkproof.Demo.CodeKind.ofNat x.ctorIdx = x
 constructor Inkproof.Demo.CodeKind.shim : Inkproof.Demo.CodeKind
 constructor Inkproof.Demo.CodeKind.template : Inkproof.Demo.CodeKind
+def Inkproof.Demo.Draw.bytes : UInt32 → Nat → Nat → Inkproof.Scene.DisplayList → ByteArray
+theorem Inkproof.Demo.Draw.bytes_data : ∀ (background : UInt32) (w h : Nat) (list : Inkproof.Scene.DisplayList), (Inkproof.Demo.Draw.bytes background w h list).data.toList = Inkproof.Gpu.encode (Inkproof.Demo.Draw.frame background w h list)
+def Inkproof.Demo.Draw.frame : UInt32 → Nat → Nat → Inkproof.Scene.DisplayList → List Inkproof.Gpu.Cmd
+theorem Inkproof.Demo.Draw.frame_eq : ∀ (background : UInt32) (w h : Nat) (list : Inkproof.Scene.DisplayList), Inkproof.Demo.Draw.frame background w h list = { op := 6, args := [Inkproof.Gpu.Arg.u32 background] } :: { op := 7, args := [Inkproof.Gpu.Arg.u32 0] } :: { op := 3, args := [Inkproof.Gpu.Arg.u32 0] } :: (Inkproof.Gpu.compileCmds (Inkproof.Gpu.tessellate { x := 0, y := 0 }) { } [Inkproof.Demo.Draw.tile w h list]).snd
+def Inkproof.Demo.Draw.tile : Nat → Nat → Inkproof.Scene.DisplayList → Inkproof.Gpu.Tile
+theorem Inkproof.Demo.Draw.tile_list : ∀ (w h : Nat) (list : Inkproof.Scene.DisplayList), (Inkproof.Demo.Draw.tile w h list).list = list
+theorem Inkproof.Demo.Draw.tile_scissor : ∀ (w h : Nat) (list : Inkproof.Scene.DisplayList) (r : Inkproof.Scene.Rect), (Inkproof.Demo.Draw.tile w h list).scissor r = [r.x0.floor.toInt32.toUInt32, (↑h - r.y1.ceil).toInt32.toUInt32, (r.x1.ceil - r.x0.floor).toNat.toUInt32, (r.y1.ceil - r.y0.floor).toNat.toUInt32]
 inductive Inkproof.Demo.Inspect.Decimation : Type
 def Inkproof.Demo.Inspect.Decimation.apply : Inkproof.Demo.Inspect.Decimation → List Inkproof.Scene.Pt → List Inkproof.Scene.Pt
 theorem Inkproof.Demo.Inspect.Decimation.apply_guaranteed : ∀ (xs : List Inkproof.Scene.Pt), Inkproof.Demo.Inspect.Decimation.guaranteed.apply xs = Inkproof.Scene.reducePoints xs
