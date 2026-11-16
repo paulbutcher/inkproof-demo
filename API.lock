@@ -87,6 +87,25 @@ theorem Inkproof.Demo.Robot.next_mod : ∀ (s : Nat), Inkproof.Demo.Robot.next (
 def Inkproof.Demo.Robot.run : Inkproof.Viewport.ViewConfig Float → Nat → Nat → Nat → Option String
 def Inkproof.Demo.Robot.run.go : Inkproof.Viewport.ViewConfig Float → (n : Nat) → Nat → 0 < n → Nat → Nat → Inkproof.Viewport.Linked Float n → Option String
 def Inkproof.Demo.Robot.violation : {n : Nat} → Inkproof.Viewport.ViewConfig Float → Inkproof.Viewport.Linked Float n → Inkproof.Viewport.Linked Float n → Inkproof.Demo.Robot.Action n → Option String
+def Inkproof.Demo.Seismic.Extent : Type
+structure Inkproof.Demo.Seismic.Quake : Type
+field Inkproof.Demo.Seismic.Quake.magnitude : Inkproof.Demo.Seismic.Quake → Nat
+constructor Inkproof.Demo.Seismic.Quake.mk : Nat → Nat → Inkproof.Demo.Seismic.Quake
+field Inkproof.Demo.Seismic.Quake.time : Inkproof.Demo.Seismic.Quake → Nat
+structure Inkproof.Demo.Seismic.Station : Type
+def Inkproof.Demo.Seismic.Station.down : Inkproof.Demo.Seismic.Station → Nat → Bool
+constructor Inkproof.Demo.Seismic.Station.mk : Nat → List (Nat × Nat) → Inkproof.Demo.Seismic.Station
+field Inkproof.Demo.Seismic.Station.outages : Inkproof.Demo.Seismic.Station → List (Nat × Nat)
+def Inkproof.Demo.Seismic.Station.pyramid : Inkproof.Demo.Seismic.Station → Nat → Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent
+def Inkproof.Demo.Seismic.Station.sample : Inkproof.Demo.Seismic.Station → Nat → Option Int
+theorem Inkproof.Demo.Seismic.Station.sample_eq_none_iff : ∀ (s : Inkproof.Demo.Seismic.Station) (i : Nat), s.sample i = Option.none ↔ s.down i = Bool.true
+def Inkproof.Demo.Seismic.Station.samples : Inkproof.Demo.Seismic.Station → Nat → Array (Option Int)
+field Inkproof.Demo.Seismic.Station.seed : Inkproof.Demo.Seismic.Station → Nat
+def Inkproof.Demo.Seismic.catalogue : Array Inkproof.Demo.Seismic.Quake → Inkproof.Core.Series Nat Nat
+def Inkproof.Demo.Seismic.extent : Option Int → Inkproof.Demo.Seismic.Extent
+def Inkproof.Demo.Seismic.isGap : Inkproof.Core.Minimum Int → Bool
+def Inkproof.Demo.Seismic.markerOf : Inkproof.Scene.ScatterStyle → Inkproof.Scene.Projection Nat Nat → Inkproof.Demo.Seismic.Quake → Inkproof.Scene.Command
+def Inkproof.Demo.Seismic.markers : Inkproof.Scene.ScatterStyle → Inkproof.Scene.Projection Nat Nat → Array Inkproof.Demo.Seismic.Quake → Inkproof.Scene.DisplayList
 def Inkproof.Demo.Series.coords : Inkproof.Demo.Inspect.Decimation → List Inkproof.Scene.Pt → Nat → Nat → List String
 theorem Inkproof.Demo.Series.coords_length : ∀ (d : Inkproof.Demo.Inspect.Decimation) (xs : List Inkproof.Scene.Pt) (height top : Nat), (Inkproof.Demo.Series.coords d xs height top).length = (d.apply xs).length
 def Inkproof.Demo.Series.points : Inkproof.Demo.Inspect.Decimation → List Inkproof.Scene.Pt → Nat → Nat → String

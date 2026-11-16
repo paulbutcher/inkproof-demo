@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Inkproof.Demo
 import Inkproof.Viewport
 import Inkproof.Scene
+import Inkproof.Core.Proofs
 import InkproofTools.Test.Harness
 import InkproofTools.Test.Platform
 
@@ -147,7 +148,48 @@ private def inspectorTest : Except String Unit := do
   check ((html.splitOn Inspect.guaranteeText).length > 1) "page gives the plain-English statement"
   check ((html.splitOn "∀ (l : List Pt)").length > 1) "page gives the formal statement"
 
+theorem Seismic.isGap_fold (xs : Array (Option Int)) :
+    Seismic.isGap (Inkproof.Core.Aggregate.fold (fun x => (Seismic.extent x).1) xs) = true ↔ ∀ x ∈ xs, x = none := by
+  simp only [Seismic.isGap, Option.isNone_iff_eq_none]
+  rw [Inkproof.Core.Minimum.fold_get_eq_none]
+  refine forall_congr' fun x => imp_congr_right fun _ => ?_
+  cases x <;> simp [Seismic.extent]
+
+/-- Every catalogued earthquake has its marker, wherever the view is. -/
+theorem marker_of_quake (style : Inkproof.Scene.ScatterStyle) (proj : Inkproof.Scene.Projection Nat Nat) (qs : Array Seismic.Quake) (q : Seismic.Quake)
+    (h : q ∈ qs) : Seismic.markerOf style proj q ∈ Seismic.markers style proj qs := by
+  have hp : (q.time, some q.magnitude) ∈ (Seismic.catalogue qs).points.toList := by
+    refine (Inkproof.Core.Series.ofUnsorted_perm).mem_iff.2 ?_
+    simp only [Array.toList_map, List.mem_map]
+    exact ⟨q, by simpa using h, rfl⟩
+  refine (Inkproof.Scene.mem_compileScatter style proj (Seismic.catalogue qs) _).2 ⟨q.time, q.magnitude, ?_, rfl⟩
+  simpa using hp
+
+
+theorem Seismic.size_samples (s : Seismic.Station) (n : Nat) : (s.samples n).size = n := by
+  simp [Seismic.Station.samples]
+
+theorem Seismic.getElem_samples (s : Seismic.Station) (n i : Nat) (h : i < (s.samples n).size) :
+    (s.samples n)[i] = s.sample i := by
+  simp [Seismic.Station.samples]
+
+/-- A pyramid query summarises exactly the samples of its range. -/
+theorem Seismic.pyramid_query (s : Seismic.Station) (n lo hi : Nat) :
+    (s.pyramid n).query lo hi = Inkproof.Core.Aggregate.fold Seismic.extent ((s.samples n).extract lo hi) :=
+  Inkproof.Core.Pyramid.query_ofMeasure 2 (by omega) Seismic.extent (s.samples n) lo hi
+
+theorem Seismic.down_iff (s : Seismic.Station) (i : Nat) :
+    s.down i = true ↔ ∃ o ∈ s.outages, o.1 ≤ i ∧ i < o.2 := by
+  simp [Seismic.Station.down]
+
+theorem Seismic.extent_get (x : Option Int) : (Seismic.extent x).1.get = x ∧ (Seismic.extent x).2.get = x := by
+  cases x <;> simp [Seismic.extent]
+
+theorem Seismic.catalogue_points (qs : Array Seismic.Quake) :
+    (Seismic.catalogue qs).points.toList.Perm (qs.map fun q => (q.time, some q.magnitude)).toList :=
+  Inkproof.Core.Series.ofUnsorted_perm
+
 def main (args : List String) : IO UInt32 :=
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, 
     platformTest (args.contains "--expect-wasm")]
