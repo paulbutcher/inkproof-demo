@@ -4,8 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lasm.UI
 import Inkproof.Demo
+import Inkproof.Web.Host.Chart
 
-open Lasm.UI Inkproof.Demo Inkproof.Demo.Inspect Inkproof.Demo.View Inkproof.Viewport
+open Lasm.UI Inkproof.Web.Host Inkproof.Demo Inkproof.Demo.Inspect Inkproof.Demo.View Inkproof.Viewport
 
 def sampleCount : Nat := 4096
 def chartCols : Nat := 400
@@ -50,16 +51,17 @@ def modeName : Decimation → String
   | .guaranteed => "guaranteed"
   | .naive => "naive"
 
+def tracePaint : Inkproof.Scene.Paint := ⟨0, ⟨70, 130, 180, 255⟩⟩
+
+def quakeStyle : Inkproof.Scene.ScatterStyle := ⟨⟨1, ⟨220, 20, 60, 255⟩⟩, .circle, 4⟩
+
+def sceneOf (src : String) : Lasm.JS.Async Scene := do
+  let some r := Plot.parseSrc src | throw (IO.userError s!"not a sample range: {src}")
+  let list := Plot.traces tracePaint pyramids r chartCols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
+  return { commands := Draw.bytes 0xffffffff chartCols (trackHeight * stations.size) list }
+
 def stacked (r : Range) : Html Msg :=
-  Svg.svg [attr "id" "stack", attr "viewBox" s!"0 0 {chartCols} {trackHeight * stations.size}",
-      attr "width" "800", attr "height" "400"]
-    ((pyramids.toList.zipIdx.flatMap fun (p, i) =>
-      (Stack.traces p r.lo r.hi chartCols trackHeight 1000).map fun pts =>
-        Svg.polygon [attr "class" "trace", attr "transform" s!"translate(0,{i * trackHeight})",
-          attr "fill" "steelblue", attr "points" pts] []) ++
-     ((inView r quakes).toList.map fun q =>
-      Svg.circle [attr "class" "quake", attr "cx" (toString (column r chartCols q.time)),
-        attr "cy" "8", attr "r" "4", attr "fill" "crimson"] []))
+  node "inkproof-chart" [attr "id" "stack", attr "src" (Plot.src r), attr "style" "width:800px;height:400px"] []
 
 def view (m : Model) : Html Msg :=
   let reading := inspect series m.column
@@ -80,5 +82,6 @@ def view (m : Model) : Html Msg :=
     div [attr "id" "inspector", prop "innerHTML" (.str (reading.html (some guaranteeText)))] []]
 
 def main : IO Unit := do
+  register "inkproof-chart" sceneOf
   let app : App Unit Model Msg := App.sandbox {} update view
   App.run app

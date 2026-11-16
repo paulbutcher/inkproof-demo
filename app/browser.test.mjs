@@ -55,34 +55,53 @@ test('the inspector shows the raw samples, their extremes and the guarantee for 
 
 const stack = async () => {
   const page = await browser.newPage();
+  await page.addInitScript(() => {
+    window.draws = 0;
+    document.addEventListener('inkproof-draw', () => { window.draws += 1; });
+  });
   await page.goto(base);
-  await page.waitForSelector('#stack .trace');
+  await page.waitForFunction(() => window.draws > 0);
   return page;
 };
 const range = page => page.$eval('#range', e => e.textContent.match(/\d+/g).map(Number));
-const settle = (page, before) => page.waitForFunction(b => document.querySelector('#range').textContent !== b, before);
+const settle = async (page, before, draws) => {
+  await page.waitForFunction(b => document.querySelector('#range').textContent !== b, before).catch(() => {});
+  await page.waitForFunction(d => window.draws > d, draws);
+};
+// The colour at chart pixel (x, y), a chart being 400 by 400 chart pixels however large its backing store is.
+const colourAt = (page, x, y) => page.evaluate(([x, y]) => {
+  const c = document.querySelector('#stack').shadowRoot.querySelector('canvas');
+  const [r, g, b] = c.getContext('2d').getImageData(Math.floor((x + 0.5) * c.width / 400), Math.floor((y + 0.5) * c.height / 400), 1, 1).data;
+  return { r, g, b };
+}, [x, y]);
+const isWhite = c => c.r > 240 && c.g > 240 && c.b > 240;
+const isRed = c => c.r > 150 && c.g < 100 && c.b < 100;
 
-test('stations with outages are drawn as separate traces, never bridged', async () => {
+test('stations with outages are drawn with gaps, never bridged', async () => {
   const page = await stack();
-  const traces = await page.$$eval('#stack .trace', ps => ps.map(p => p.getAttribute('transform')));
-  const perStation = {};
-  for (const t of traces) perStation[t] = (perStation[t] ?? 0) + 1;
-  assert.deepEqual(Object.values(perStation).sort(), [1, 2, 2, 3]);
+  // Station 1 is down for samples 900 to 1300, which is chart columns 88 to 126 of the full view; station 2 is down for 2000 to 2600, columns 195 to 254, and station 3 never goes down.
+  assert.ok(!isWhite(await colourAt(page, 50, 50)));
+  for (const x of [90, 100, 110, 125]) assert.ok(isWhite(await colourAt(page, x, 50)), `column ${x} of the first track`);
+  for (const x of [200, 225, 250]) assert.ok(isWhite(await colourAt(page, x, 150)), `column ${x} of the second track`);
+  for (const x of [50, 225, 380]) assert.ok(!isWhite(await colourAt(page, x, 250)), `column ${x} of the third track`);
   await page.close();
 });
 
 test('every catalogued quake in view has a marker inside the chart, after zooming and panning', async () => {
   const page = await stack();
-  assert.equal((await page.$$('#stack .quake')).length, 5);
-  for (const id of ['zoom-in', 'pan-right', 'pan-left', 'zoom-in', 'pan-right']) {
-    const before = await page.$eval('#range', e => e.textContent);
-    await page.click(`#${id}`);
-    await settle(page, before).catch(() => {});
+  const times = [100, 1000, 2048, 2049, 3700];
+  for (const id of [null, 'zoom-in', 'pan-right', 'pan-left', 'zoom-in', 'pan-right']) {
+    if (id) {
+      const before = await page.$eval('#range', e => e.textContent);
+      const draws = await page.evaluate(() => window.draws);
+      await page.click(`#${id}`);
+      await settle(page, before, draws);
+    }
     const [lo, hi] = await range(page);
-    const expected = [100, 1000, 2048, 2049, 3700].filter(t => lo <= t && t < hi).length;
-    const xs = await page.$$eval('#stack .quake', cs => cs.map(c => Number(c.getAttribute('cx'))));
-    assert.equal(xs.length, expected);
-    assert.ok(xs.every(x => x >= 0 && x < 400));
+    for (const t of times.filter(t => lo <= t && t < hi)) {
+      const x = Math.floor((t - lo) * 400 / (hi - lo));
+      assert.ok(isRed(await colourAt(page, x, 4)), `quake at ${t} in ${lo} to ${hi}`);
+    }
   }
   await page.close();
 });
