@@ -206,13 +206,13 @@ def decodeRecord (b : ByteArray) : Except String Record := do
 def decodeFile (b : ByteArray) : Except String (Array Record) := do
   let mut out := #[]
   let mut pos := 0
-  for _ in List.range b.size do
+  for _ in [0:b.size] do
     if pos < b.size then
-      let rest := b.extract pos b.size
-      let little ← isLittle rest
-      let blk ← uint rest little 46 2
-      let lenExp ← uint rest false (blk + 6) 1
-      out := out.push (← decodeRecord rest)
+      let head := b.extract pos (pos + 256)
+      let little ← isLittle head
+      let blk ← uint head little 46 2
+      let lenExp ← uint head false (blk + 6) 1
+      out := out.push (← decodeRecord (b.extract pos (pos + 2 ^ lenExp)))
       pos := pos + 2 ^ lenExp
   return out
 
