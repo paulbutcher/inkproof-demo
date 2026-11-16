@@ -78,6 +78,19 @@ field Inkproof.Demo.Library.repo : Inkproof.Demo.Library → String
 field Inkproof.Demo.Library.sources : Inkproof.Demo.Library → Array (String × String)
 field Inkproof.Demo.Library.tag : Inkproof.Demo.Library → String
 def Inkproof.Demo.Library.theorems : Inkproof.Demo.Library → Array Inkproof.Demo.TheoremEntry
+def Inkproof.Demo.Plot.column : Nat → Nat → Nat → Nat → Int × Int → Inkproof.Scene.Column
+theorem Inkproof.Demo.Plot.column_eq : ∀ (y0 height top x : Nat) (v : Int × Int), Inkproof.Demo.Plot.column y0 height top x v = { x := ↑x + 1 / 2, lo := ↑y0 + ↑(Inkproof.Demo.Stack.pixelY height top v.snd), hi := ↑y0 + ↑(Inkproof.Demo.Stack.pixelY height top v.fst) }
+def Inkproof.Demo.Plot.items : Nat → Nat → Nat → Inkproof.Core.Segmented Nat (Int × Int) → List (Inkproof.Scene.Item Inkproof.Scene.Column)
+theorem Inkproof.Demo.Plot.items_eq : ∀ (y0 height top : Nat) (g : Inkproof.Core.Segmented Nat (Int × Int)), Inkproof.Demo.Plot.items y0 height top g = [Inkproof.Scene.Item.gap].intercalate (List.map (fun seg => List.filterMap (fun x => match x with | (x, v) => Option.map (fun v => Inkproof.Scene.Item.val (Inkproof.Demo.Plot.column y0 height top x v)) v) seg.points.toList) g.segments.toList)
+def Inkproof.Demo.Plot.parseSrc : String → Option Inkproof.Demo.View.Range
+def Inkproof.Demo.Plot.quakes : Inkproof.Scene.ScatterStyle → Array Inkproof.Demo.Seismic.Quake → Inkproof.Demo.View.Range → Nat → Inkproof.Scene.DisplayList
+theorem Inkproof.Demo.Plot.quakes_getElem : ∀ (style : Inkproof.Scene.ScatterStyle) (qs : Array Inkproof.Demo.Seismic.Quake) (r : Inkproof.Demo.View.Range) (cols i : Nat) (h : i < Array.size (Inkproof.Demo.Plot.quakes style qs r cols)), (Inkproof.Demo.Plot.quakes style qs r cols)[i] = { layer := style.paint.layer, color := style.paint.color, shape := Inkproof.Scene.Shape.marker style.shape { x := ↑(Inkproof.Demo.View.column r cols (Inkproof.Demo.View.inView r qs)[i].time) + 1 / 2, y := style.radius } style.radius }
+theorem Inkproof.Demo.Plot.size_quakes : ∀ (style : Inkproof.Scene.ScatterStyle) (qs : Array Inkproof.Demo.Seismic.Quake) (r : Inkproof.Demo.View.Range) (cols : Nat), Array.size (Inkproof.Demo.Plot.quakes style qs r cols) = (Inkproof.Demo.View.inView r qs).size
+theorem Inkproof.Demo.Plot.size_traces : ∀ (paint : Inkproof.Scene.Paint) (ps : Array (Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent)) (r : Inkproof.Demo.View.Range) (cols height top : Nat), Array.size (Inkproof.Demo.Plot.traces paint ps r cols height top) = ps.size
+def Inkproof.Demo.Plot.src : Inkproof.Demo.View.Range → String
+theorem Inkproof.Demo.Plot.src_eq : ∀ (r : Inkproof.Demo.View.Range), Inkproof.Demo.Plot.src r = ToString.toString r.lo ++ ToString.toString "-" ++ ToString.toString r.hi
+def Inkproof.Demo.Plot.traces : Inkproof.Scene.Paint → Array (Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent) → Inkproof.Demo.View.Range → Nat → Nat → Nat → Inkproof.Scene.DisplayList
+theorem Inkproof.Demo.Plot.traces_getElem : ∀ (paint : Inkproof.Scene.Paint) (ps : Array (Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent)) (r : Inkproof.Demo.View.Range) (cols height top i : Nat) (h : i < Array.size (Inkproof.Demo.Plot.traces paint ps r cols height top)), (Inkproof.Demo.Plot.traces paint ps r cols height top)[i] = { layer := paint.layer, color := paint.color, shape := Inkproof.Scene.Shape.envelope (Inkproof.Demo.Plot.items (i * height) height top (Inkproof.Demo.Stack.drawn ps[i] r.lo r.hi cols)) }
 inductive Inkproof.Demo.Robot.Action : Nat → Type
 constructor Inkproof.Demo.Robot.Action.input : {n : Nat} → Fin n → Inkproof.Viewport.Input Float → Inkproof.Demo.Robot.Action n
 constructor Inkproof.Demo.Robot.Action.toggle : {n : Nat} → Fin n → Inkproof.Demo.Robot.Action n

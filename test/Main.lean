@@ -222,7 +222,18 @@ private def drawTest : Except String Unit := do
     let draws := cmds.filter (·.op == 5)
     check (draws.length == n) s!"seed {seed}: {draws.length} draws for {n} quakes"
 
+private def plotTest : Except String Unit := do
+  let st : Seismic.Station := { seed := 3, outages := [(10, 20), (40, 45)] }
+  let p := st.pyramid 60
+  for (lo, hi) in [(0, 60), (5, 30), (12, 18), (30, 60)] do
+    let r : View.Range := ⟨lo, hi⟩
+    check ((Plot.parseSrc (Plot.src r)).map (fun r => (r.lo, r.hi)) == some (lo, hi)) s!"{lo}-{hi}: src round trip"
+    let gaps (items : List (Inkproof.Scene.Item Inkproof.Scene.Column)) := (items.filter fun | .gap => true | _ => false).length
+    let g := Stack.drawn p lo hi 60
+    check (gaps (Plot.items 0 100 1000 g) + 1 == g.numSegments || g.numSegments == 0) s!"{lo}-{hi}: one gap between runs"
+  check (Plot.parseSrc "7" == none && Plot.parseSrc "a-3" == none) "malformed src is rejected"
+
 def main (args : List String) : IO UInt32 :=
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩,
     platformTest (args.contains "--expect-wasm")]
