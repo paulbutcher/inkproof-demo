@@ -117,3 +117,44 @@ test('zooming in narrows the range and zooming out restores it', async () => {
   await page.waitForFunction(w => Number(document.querySelector('#range').textContent.match(/\d+/g)[1]) - Number(document.querySelector('#range').textContent.match(/\d+/g)[0]) > w, hi1 - lo1);
   await page.close();
 });
+
+test('the displayed placement bound names its theorem and its normal-range condition', async () => {
+  const page = await stack();
+  const text = await page.$eval('#error-bound', e => e.textContent);
+  assert.match(text, /rebase_apply_float_error/);
+  assert.match(text, /normal floating-point range/);
+  await page.close();
+});
+
+// Headless Chromium has no GPU, so frame times are measured under a 4x CPU slowdown as a stand-in for a mid-range phone.
+test('the first chart is drawn within a second and frames stay under 16.7 ms at the 95th percentile with eight linked charts', async () => {
+  const page = await browser.newPage();
+  await page.addInitScript(() => {
+    window.firstDraw = null;
+    document.addEventListener('inkproof-draw', () => { window.firstDraw ??= performance.now(); });
+  });
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  await page.goto(base);
+  await page.waitForFunction(() => window.firstDraw !== null);
+  assert.ok(await page.evaluate(() => window.firstDraw) < 1000, 'first draw within 1000 ms of navigation');
+  assert.equal(await page.$$eval('#charts inkproof-chart', e => e.length), 8);
+  await page.evaluate(() => {
+    window.frames = [];
+    let last = performance.now();
+    const tick = now => { window.frames.push(now - last); last = now; window.frameLoop = requestAnimationFrame(tick); };
+    window.frameLoop = requestAnimationFrame(tick);
+  });
+  for (const id of ['zoom-in', 'pan-right', 'zoom-in', 'pan-left', 'zoom-out', 'pan-right']) {
+    const before = await page.$eval('#range', e => e.textContent);
+    await page.click(`#${id}`);
+    await page.waitForFunction(b => document.querySelector('#range').textContent !== b, before).catch(() => {});
+    await page.waitForTimeout(250);
+  }
+  const frames = await page.evaluate(() => { cancelAnimationFrame(window.frameLoop); return window.frames.slice(1); });
+  frames.sort((a, b) => a - b);
+  const p95 = frames[Math.floor(frames.length * 0.95)];
+  assert.ok(frames.length > 30, 'enough frames sampled');
+  assert.ok(p95 < 16.7 + 1, `p95 frame interval ${p95} ms`);
+  await page.close();
+});

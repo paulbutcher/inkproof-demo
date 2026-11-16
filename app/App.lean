@@ -69,7 +69,7 @@ def stacked (r : Range) (i : Nat) : Html Msg :=
     attr "src" (Plot.src r), attr "style" "width:400px;height:200px"] []
 
 def errorBound (r : Range) : String :=
-  s!"Placement error at most {Bound.micro (Bound.pixelError r chartCols deepest)} millionths of a pixel anywhere in a {deepest} sample recording, by {Bound.theoremName}"
+  s!"Placement error at most {Bound.micro (Bound.pixelError r chartCols deepest)} millionths of a pixel anywhere in a {deepest} sample recording, by {Bound.theoremName}, provided every intermediate product and sum stays in the normal floating-point range (its NormalRange hypotheses)"
 
 def view (m : Model) : Html Msg :=
   let reading := inspect series m.column
