@@ -24,3 +24,7 @@ script tests do
   let child ← IO.Process.spawn
     { cmd := "lake", args := #["test"], cwd := __dir__ / "test" }
   child.wait
+
+lean_exe «theorem-index» where
+  root := `TheoremIndexMain
+  srcDir := "gen"
