@@ -233,7 +233,16 @@ private def plotTest : Except String Unit := do
     check (gaps (Plot.items 0 100 1000 g) + 1 == g.numSegments || g.numSegments == 0) s!"{lo}-{hi}: one gap between runs"
   check (Plot.parseSrc "7" == none && Plot.parseSrc "a-3" == none) "malformed src is rejected"
 
+private def boundTest : Except String Unit := do
+  let n := 3000000000
+  for (lo, hi) in [(0, n), (n / 2, n / 2 + 1000), (n - 2, n)] do
+    let r : View.Range := ⟨lo, hi⟩
+    let b := Bound.pixelError r 400 n
+    check (b ≤ 1 / 2) s!"{lo}-{hi}: bound {Bound.micro b} millionths is within half a pixel"
+  let r : View.Range := ⟨n - 2, n⟩
+  check (Bound.pixelError r 400 n > Bound.pixelError ⟨0, n⟩ 400 n) "deeper zoom has a larger bound"
+
 def main (args : List String) : IO UInt32 :=
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩,
     platformTest (args.contains "--expect-wasm")]

@@ -1,3 +1,8 @@
+def Inkproof.Demo.Bound.micro : Rat → Nat
+theorem Inkproof.Demo.Bound.micro_eq : ∀ (q : Rat), Inkproof.Demo.Bound.micro q = (q * 1000000).ceil.toNat
+def Inkproof.Demo.Bound.pixelError : Inkproof.Demo.View.Range → Nat → Nat → Rat
+theorem Inkproof.Demo.Bound.pixelError_eq : ∀ (r : Inkproof.Demo.View.Range) (cols t : Nat), Inkproof.Demo.Bound.pixelError r cols t = ((↑cols / ↑r.width * (↑t - ↑r.lo)).abs + (↑cols / ↑r.width * ↑r.lo).abs + (-(↑cols / ↑r.width * ↑r.lo)).abs) / 2 ^ 50
+def Inkproof.Demo.Bound.theoremName : String
 structure Inkproof.Demo.CodeFile : Type
 field Inkproof.Demo.CodeFile.kind : Inkproof.Demo.CodeFile → Inkproof.Demo.CodeKind
 field Inkproof.Demo.CodeFile.lines : Inkproof.Demo.CodeFile → Nat

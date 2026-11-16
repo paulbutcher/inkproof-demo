@@ -60,8 +60,16 @@ def sceneOf (src : String) : Lasm.JS.Async Scene := do
   let list := Plot.traces tracePaint pyramids r chartCols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
   return { commands := Draw.bytes 0xffffffff chartCols (trackHeight * stations.size) list }
 
-def stacked (r : Range) : Html Msg :=
-  node "inkproof-chart" [attr "id" "stack", attr "src" (Plot.src r), attr "style" "width:800px;height:400px"] []
+def linkedCharts : Nat := 8
+
+def deepest : Nat := 3000000000
+
+def stacked (r : Range) (i : Nat) : Html Msg :=
+  node "inkproof-chart" [attr "id" (if i == 0 then "stack" else s!"stack-{i}"), attr "class" "linked",
+    attr "src" (Plot.src r), attr "style" "width:400px;height:200px"] []
+
+def errorBound (r : Range) : String :=
+  s!"Placement error at most {Bound.micro (Bound.pixelError r chartCols deepest)} millionths of a pixel anywhere in a {deepest} sample recording, by {Bound.theoremName}"
 
 def view (m : Model) : Html Msg :=
   let reading := inspect series m.column
@@ -72,7 +80,8 @@ def view (m : Model) : Html Msg :=
       button [onClick .panLeft, attr "id" "pan-left"] [.text "Left"],
       button [onClick .panRight, attr "id" "pan-right"] [.text "Right"],
       span [attr "id" "range"] [.text s!"samples {(Range.ofInterval sampleCount m.view.x).lo} to {(Range.ofInterval sampleCount m.view.x).hi}"]],
-    stacked (Range.ofInterval sampleCount m.view.x),
+    div [attr "id" "charts"] ((List.range linkedCharts).map (stacked (Range.ofInterval sampleCount m.view.x))),
+    p [attr "id" "error-bound"] [.text (errorBound (Range.ofInterval sampleCount m.view.x))],
     button [onClick .toggle, attr "id" "toggle"] [.text s!"Decimation: {modeName m.mode}"],
     Svg.svg [attr "id" "chart", attr "viewBox" "0 0 200 100", attr "width" "800", attr "height" "400"]
       [Svg.polyline [attr "fill" "none", attr "stroke" "steelblue",
