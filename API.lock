@@ -1,0 +1,119 @@
+structure Inkproof.Demo.CodeFile : Type
+field Inkproof.Demo.CodeFile.kind : Inkproof.Demo.CodeFile → Inkproof.Demo.CodeKind
+field Inkproof.Demo.CodeFile.lines : Inkproof.Demo.CodeFile → Nat
+constructor Inkproof.Demo.CodeFile.mk : Inkproof.Demo.CodeKind → String → String → Nat → Inkproof.Demo.CodeFile
+field Inkproof.Demo.CodeFile.path : Inkproof.Demo.CodeFile → String
+field Inkproof.Demo.CodeFile.repo : Inkproof.Demo.CodeFile → String
+inductive Inkproof.Demo.CodeKind : Type
+constructor Inkproof.Demo.CodeKind.generated : Inkproof.Demo.CodeKind
+def Inkproof.Demo.CodeKind.label : Inkproof.Demo.CodeKind → String
+def Inkproof.Demo.CodeKind.matches : Inkproof.Demo.CodeKind → String → String → Bool
+def Inkproof.Demo.CodeKind.ofNat : Nat → Inkproof.Demo.CodeKind
+theorem Inkproof.Demo.CodeKind.ofNat_ctorIdx : ∀ (x : Inkproof.Demo.CodeKind), Inkproof.Demo.CodeKind.ofNat x.ctorIdx = x
+constructor Inkproof.Demo.CodeKind.shim : Inkproof.Demo.CodeKind
+constructor Inkproof.Demo.CodeKind.template : Inkproof.Demo.CodeKind
+inductive Inkproof.Demo.Inspect.Decimation : Type
+def Inkproof.Demo.Inspect.Decimation.apply : Inkproof.Demo.Inspect.Decimation → List Inkproof.Scene.Pt → List Inkproof.Scene.Pt
+theorem Inkproof.Demo.Inspect.Decimation.apply_guaranteed : ∀ (xs : List Inkproof.Scene.Pt), Inkproof.Demo.Inspect.Decimation.guaranteed.apply xs = Inkproof.Scene.reducePoints xs
+theorem Inkproof.Demo.Inspect.Decimation.apply_naive : ∀ (xs : List Inkproof.Scene.Pt), Inkproof.Demo.Inspect.Decimation.naive.apply xs = Inkproof.Demo.Inspect.keepFirst Option.none xs
+constructor Inkproof.Demo.Inspect.Decimation.guaranteed : Inkproof.Demo.Inspect.Decimation
+constructor Inkproof.Demo.Inspect.Decimation.naive : Inkproof.Demo.Inspect.Decimation
+def Inkproof.Demo.Inspect.Decimation.ofNat : Nat → Inkproof.Demo.Inspect.Decimation
+theorem Inkproof.Demo.Inspect.Decimation.ofNat_ctorIdx : ∀ (x : Inkproof.Demo.Inspect.Decimation), Inkproof.Demo.Inspect.Decimation.ofNat x.ctorIdx = x
+def Inkproof.Demo.Inspect.Decimation.toggle : Inkproof.Demo.Inspect.Decimation → Inkproof.Demo.Inspect.Decimation
+theorem Inkproof.Demo.Inspect.Decimation.toggle_guaranteed : Inkproof.Demo.Inspect.Decimation.guaranteed.toggle = Inkproof.Demo.Inspect.Decimation.naive
+theorem Inkproof.Demo.Inspect.Decimation.toggle_naive : Inkproof.Demo.Inspect.Decimation.naive.toggle = Inkproof.Demo.Inspect.Decimation.guaranteed
+theorem Inkproof.Demo.Inspect.Decimation.toggle_toggle : ∀ (d : Inkproof.Demo.Inspect.Decimation), d.toggle.toggle = d
+structure Inkproof.Demo.Inspect.Reading : Type
+def Inkproof.Demo.Inspect.Reading.agrees : Inkproof.Demo.Inspect.Reading → Bool
+theorem Inkproof.Demo.Inspect.Reading.agrees_iff : ∀ (r : Inkproof.Demo.Inspect.Reading), r.agrees = Bool.true ↔ r.lowest = r.drawnLowest ∧ r.highest = r.drawnHighest
+field Inkproof.Demo.Inspect.Reading.column : Inkproof.Demo.Inspect.Reading → Int
+field Inkproof.Demo.Inspect.Reading.drawnHighest : Inkproof.Demo.Inspect.Reading → Option Rat
+field Inkproof.Demo.Inspect.Reading.drawnLowest : Inkproof.Demo.Inspect.Reading → Option Rat
+field Inkproof.Demo.Inspect.Reading.highest : Inkproof.Demo.Inspect.Reading → Option Rat
+def Inkproof.Demo.Inspect.Reading.html : Inkproof.Demo.Inspect.Reading → Option String → String
+field Inkproof.Demo.Inspect.Reading.lowest : Inkproof.Demo.Inspect.Reading → Option Rat
+constructor Inkproof.Demo.Inspect.Reading.mk : Int → List Inkproof.Scene.Pt → Option Rat → Option Rat → Option Rat → Option Rat → Option Rat → Inkproof.Demo.Inspect.Reading
+field Inkproof.Demo.Inspect.Reading.naiveHighest : Inkproof.Demo.Inspect.Reading → Option Rat
+def Inkproof.Demo.Inspect.Reading.naiveLoses : Inkproof.Demo.Inspect.Reading → Bool
+theorem Inkproof.Demo.Inspect.Reading.naiveLoses_iff : ∀ (r : Inkproof.Demo.Inspect.Reading), r.naiveLoses = Bool.true ↔ r.naiveHighest ≠ r.highest
+field Inkproof.Demo.Inspect.Reading.raw : Inkproof.Demo.Inspect.Reading → List Inkproof.Scene.Pt
+def Inkproof.Demo.Inspect.column : List Inkproof.Scene.Pt → Int → List Inkproof.Scene.Pt
+def Inkproof.Demo.Inspect.guaranteeName : String
+def Inkproof.Demo.Inspect.guaranteeStatement : Inkproof.Demo.Library → Option String
+theorem Inkproof.Demo.Inspect.guaranteeStatement_of_find : ∀ {lib : Inkproof.Demo.Library} {t : Inkproof.Demo.TheoremEntry}, Array.find? (fun x => x.name == Inkproof.Demo.Inspect.guaranteeName) lib.theorems = Option.some t → Inkproof.Demo.Inspect.guaranteeStatement lib = Option.some t.statement
+theorem Inkproof.Demo.Inspect.guaranteeStatement_of_none : ∀ {lib : Inkproof.Demo.Library}, Array.find? (fun x => x.name == Inkproof.Demo.Inspect.guaranteeName) lib.theorems = Option.none → Inkproof.Demo.Inspect.guaranteeStatement lib = Option.none
+def Inkproof.Demo.Inspect.guaranteeText : String
+def Inkproof.Demo.Inspect.highest : List Inkproof.Scene.Pt → Option Rat
+theorem Inkproof.Demo.Inspect.highest_nil : Inkproof.Demo.Inspect.highest [] = Option.none
+theorem Inkproof.Demo.Inspect.highest_spec : ∀ {xs : List Inkproof.Scene.Pt}, xs ≠ [] → ∃ m, Inkproof.Demo.Inspect.highest xs = Option.some m ∧ (∃ p, p ∈ xs ∧ p.y = m) ∧ ∀ (p : Inkproof.Scene.Pt), p ∈ xs → p.y ≤ m
+def Inkproof.Demo.Inspect.inspect : List Inkproof.Scene.Pt → Int → Inkproof.Demo.Inspect.Reading
+theorem Inkproof.Demo.Inspect.inspect_highest : ∀ (xs : List Inkproof.Scene.Pt) (c : Int), (Inkproof.Demo.Inspect.inspect xs c).highest = Inkproof.Demo.Inspect.highest (Inkproof.Demo.Inspect.column xs c)
+theorem Inkproof.Demo.Inspect.inspect_lowest : ∀ (xs : List Inkproof.Scene.Pt) (c : Int), (Inkproof.Demo.Inspect.inspect xs c).lowest = Inkproof.Demo.Inspect.lowest (Inkproof.Demo.Inspect.column xs c)
+theorem Inkproof.Demo.Inspect.inspect_raw : ∀ (xs : List Inkproof.Scene.Pt) (c : Int), (Inkproof.Demo.Inspect.inspect xs c).raw = Inkproof.Demo.Inspect.column xs c
+instance Inkproof.Demo.Inspect.instDecidableEqDecimation : DecidableEq Inkproof.Demo.Inspect.Decimation
+def Inkproof.Demo.Inspect.keepFirst : Option Int → List Inkproof.Scene.Pt → List Inkproof.Scene.Pt
+theorem Inkproof.Demo.Inspect.keepFirst_cons_new : ∀ {prev : Option Int} {p : Inkproof.Scene.Pt} (rest : List Inkproof.Scene.Pt), prev ≠ Option.some p.x.floor → Inkproof.Demo.Inspect.keepFirst prev (p :: rest) = p :: Inkproof.Demo.Inspect.keepFirst (Option.some p.x.floor) rest
+theorem Inkproof.Demo.Inspect.keepFirst_cons_same : ∀ {prev : Option Int} {p : Inkproof.Scene.Pt} (rest : List Inkproof.Scene.Pt), prev = Option.some p.x.floor → Inkproof.Demo.Inspect.keepFirst prev (p :: rest) = Inkproof.Demo.Inspect.keepFirst prev rest
+theorem Inkproof.Demo.Inspect.keepFirst_nil : ∀ (prev : Option Int), Inkproof.Demo.Inspect.keepFirst prev [] = []
+theorem Inkproof.Demo.Inspect.keepFirst_sublist : ∀ (prev : Option Int) (xs : List Inkproof.Scene.Pt), (Inkproof.Demo.Inspect.keepFirst prev xs).Sublist xs
+def Inkproof.Demo.Inspect.lowest : List Inkproof.Scene.Pt → Option Rat
+theorem Inkproof.Demo.Inspect.lowest_nil : Inkproof.Demo.Inspect.lowest [] = Option.none
+theorem Inkproof.Demo.Inspect.lowest_spec : ∀ {xs : List Inkproof.Scene.Pt}, xs ≠ [] → ∃ m, Inkproof.Demo.Inspect.lowest xs = Option.some m ∧ (∃ p, p ∈ xs ∧ p.y = m) ∧ ∀ (p : Inkproof.Scene.Pt), p ∈ xs → m ≤ p.y
+theorem Inkproof.Demo.Inspect.mem_column : ∀ {xs : List Inkproof.Scene.Pt} {c : Int} {p : Inkproof.Scene.Pt}, p ∈ Inkproof.Demo.Inspect.column xs c ↔ p ∈ xs ∧ p.x.floor = c
+def Inkproof.Demo.Inspect.showOpt : Option Rat → String
+def Inkproof.Demo.Inspect.showRat : Rat → String
+structure Inkproof.Demo.Library : Type
+field Inkproof.Demo.Library.apiLock : Inkproof.Demo.Library → String
+def Inkproof.Demo.Library.html : Inkproof.Demo.Library → String
+constructor Inkproof.Demo.Library.mk : String → String → String → Array (String × String) → Inkproof.Demo.Library
+field Inkproof.Demo.Library.repo : Inkproof.Demo.Library → String
+field Inkproof.Demo.Library.sources : Inkproof.Demo.Library → Array (String × String)
+field Inkproof.Demo.Library.tag : Inkproof.Demo.Library → String
+def Inkproof.Demo.Library.theorems : Inkproof.Demo.Library → Array Inkproof.Demo.TheoremEntry
+inductive Inkproof.Demo.Robot.Action : Nat → Type
+constructor Inkproof.Demo.Robot.Action.input : {n : Nat} → Fin n → Inkproof.Viewport.Input Float → Inkproof.Demo.Robot.Action n
+constructor Inkproof.Demo.Robot.Action.toggle : {n : Nat} → Fin n → Inkproof.Demo.Robot.Action n
+def Inkproof.Demo.Robot.action : (n : Nat) → 0 < n → Nat → Inkproof.Demo.Robot.Action n × Nat
+theorem Inkproof.Demo.Robot.below_eq : ∀ (s m : Nat), Inkproof.Demo.Robot.below s m = (Inkproof.Demo.Robot.next s / 2 ^ 20 % (m + 1), Inkproof.Demo.Robot.next s)
+theorem Inkproof.Demo.Robot.below_lt : ∀ (s m : Nat), (Inkproof.Demo.Robot.below s m).fst < m + 1
+def Inkproof.Demo.Robot.home : Inkproof.Viewport.ViewConfig Float → (n : Nat) → Inkproof.Viewport.Linked Float n
+theorem Inkproof.Demo.Robot.home_view : ∀ (c : Inkproof.Viewport.ViewConfig Float) (n : Nat) (i : Fin n), (Inkproof.Demo.Robot.home c n).view i = Inkproof.Viewport.View.home c
+def Inkproof.Demo.Robot.near : Float → Float → Bool
+theorem Inkproof.Demo.Robot.near_eq : ∀ (a b : Float), Inkproof.Demo.Robot.near a b = Decidable.decide ((a - b).abs ≤ 1e-6 * (1 + a.abs + b.abs))
+def Inkproof.Demo.Robot.next : Nat → Nat
+theorem Inkproof.Demo.Robot.next_lt : ∀ (s : Nat), Inkproof.Demo.Robot.next s < 2 ^ 64
+theorem Inkproof.Demo.Robot.next_mod : ∀ (s : Nat), Inkproof.Demo.Robot.next (s % 2 ^ 64) = Inkproof.Demo.Robot.next s
+def Inkproof.Demo.Robot.run : Inkproof.Viewport.ViewConfig Float → Nat → Nat → Nat → Option String
+def Inkproof.Demo.Robot.run.go : Inkproof.Viewport.ViewConfig Float → (n : Nat) → Nat → 0 < n → Nat → Nat → Inkproof.Viewport.Linked Float n → Option String
+def Inkproof.Demo.Robot.violation : {n : Nat} → Inkproof.Viewport.ViewConfig Float → Inkproof.Viewport.Linked Float n → Inkproof.Viewport.Linked Float n → Inkproof.Demo.Robot.Action n → Option String
+def Inkproof.Demo.Series.coords : Inkproof.Demo.Inspect.Decimation → List Inkproof.Scene.Pt → Nat → Nat → List String
+theorem Inkproof.Demo.Series.coords_length : ∀ (d : Inkproof.Demo.Inspect.Decimation) (xs : List Inkproof.Scene.Pt) (height top : Nat), (Inkproof.Demo.Series.coords d xs height top).length = (d.apply xs).length
+def Inkproof.Demo.Series.points : Inkproof.Demo.Inspect.Decimation → List Inkproof.Scene.Pt → Nat → Nat → String
+theorem Inkproof.Demo.Series.points_toList : ∀ (d : Inkproof.Demo.Inspect.Decimation) (xs : List Inkproof.Scene.Pt) (height top : Nat), (Inkproof.Demo.Series.points d xs height top).toList = [' '].intercalate (List.map String.toList (Inkproof.Demo.Series.coords d xs height top))
+def Inkproof.Demo.Series.samples : Nat → Nat → List Inkproof.Scene.Pt
+theorem Inkproof.Demo.Series.samples_length : ∀ (columns perColumn : Nat), (Inkproof.Demo.Series.samples columns perColumn).length = columns * perColumn
+structure Inkproof.Demo.TcbRow : Type
+field Inkproof.Demo.TcbRow.component : Inkproof.Demo.TcbRow → String
+field Inkproof.Demo.TcbRow.mitigation : Inkproof.Demo.TcbRow → String
+constructor Inkproof.Demo.TcbRow.mk : String → String → String → Inkproof.Demo.TcbRow
+field Inkproof.Demo.TcbRow.why : Inkproof.Demo.TcbRow → String
+structure Inkproof.Demo.TheoremEntry : Type
+def Inkproof.Demo.TheoremEntry.html : Inkproof.Demo.TheoremEntry → String
+field Inkproof.Demo.TheoremEntry.library : Inkproof.Demo.TheoremEntry → String
+constructor Inkproof.Demo.TheoremEntry.mk : String → String → String → String → Inkproof.Demo.TheoremEntry
+field Inkproof.Demo.TheoremEntry.name : Inkproof.Demo.TheoremEntry → String
+field Inkproof.Demo.TheoremEntry.statement : Inkproof.Demo.TheoremEntry → String
+field Inkproof.Demo.TheoremEntry.url : Inkproof.Demo.TheoremEntry → String
+def Inkproof.Demo.codeFiles : Array (String × String × String) → Array Inkproof.Demo.CodeFile
+def Inkproof.Demo.declares : String → String → Bool
+def Inkproof.Demo.escapeHtml : String → String
+def Inkproof.Demo.githubUrl : String → String → String
+instance Inkproof.Demo.instDecidableEqCodeKind : DecidableEq Inkproof.Demo.CodeKind
+def Inkproof.Demo.lineCount : String → Nat
+def Inkproof.Demo.locate : Array (String × String) → String → Option (String × Option Nat)
+def Inkproof.Demo.parseTheorem : String → Option (String × String)
+def Inkproof.Demo.sourceUrl : Inkproof.Demo.Library → String → String
+def Inkproof.Demo.tcbHtml : Array Inkproof.Demo.CodeFile → String
+def Inkproof.Demo.tcbRows : List Inkproof.Demo.TcbRow
+def Inkproof.Demo.theoremPage : Array Inkproof.Demo.Library → Array Inkproof.Demo.CodeFile → String
