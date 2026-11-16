@@ -8,38 +8,12 @@ namespace Inkproof.Demo.Robot
 
 open Inkproof.Viewport
 
-/-- Charts that share an x axis while linked, and keep their own once unlinked. -/
-structure Rig (n : Nat) where
-  group : Linked Float n
-  linked : Fin n → Bool
-  own : Fin n → Interval Float
+/-- `n` charts that share an x axis, all linked. -/
+def home (c : ViewConfig Float) (n : Nat) : Linked Float n :=
+  { x := ⟨c.x.home⟩, y := fun _ => c.y.home }
 
-def Rig.home (c : ViewConfig Float) (n : Nat) : Rig n :=
-  ⟨⟨⟨c.x.home⟩, fun _ => c.y.home⟩, fun _ => true, fun _ => c.x.home⟩
-
-def Rig.view {n : Nat} (r : Rig n) (i : Fin n) : View Float :=
-  if r.linked i then r.group.view i else ⟨r.own i, r.group.y i⟩
-
-def Rig.step {n : Nat} (c : ViewConfig Float) (r : Rig n) (i : Fin n) (inp : Input Float) : Rig n :=
-  if r.linked i then { r with group := r.group.step c i inp }
-  else
-    let v := View.step c (r.view i) inp
-    { r with own := fun j => if j = i then v.x else r.own j,
-             group := { r.group with y := fun j => if j = i then v.y else r.group.y j } }
-
-/-- Unlinking keeps the chart where it is; relinking adopts the shared axis. -/
-def Rig.toggle {n : Nat} (r : Rig n) (i : Fin n) : Rig n :=
-  { r with linked := fun j => if j = i then !r.linked i else r.linked j,
-           own := fun j => if j = i then r.group.x.scale else r.own j }
-
-theorem Rig.view_linked {n : Nat} (r : Rig n) (i : Fin n) (h : r.linked i = true) :
-    r.view i = r.group.view i := by simp [Rig.view, h]
-
-theorem Rig.view_unlinked {n : Nat} (r : Rig n) (i : Fin n) (h : r.linked i = false) :
-    r.view i = ⟨r.own i, r.group.y i⟩ := by simp [Rig.view, h]
-
-theorem Rig.home_view (c : ViewConfig Float) (n : Nat) (i : Fin n) :
-    (Rig.home c n).view i = View.home c := by simp [Rig.home, Rig.view, Linked.view, View.home]
+theorem home_view (c : ViewConfig Float) (n : Nat) (i : Fin n) :
+    (home c n).view i = View.home c := by simp [home, Linked.view, View.home]
 
 /-- Small deterministic generator, so a failing run replays from its seed. -/
 def next (s : Nat) : Nat := (s * 6364136223846793005 + 1442695040888963407) % 2 ^ 64
@@ -57,24 +31,6 @@ def below (s m : Nat) : Nat × Nat :=
 theorem below_eq (s m : Nat) : below s m = (next s / 2 ^ 20 % (m + 1), next s) := rfl
 
 theorem below_lt (s m : Nat) : (below s m).1 < m + 1 := Nat.mod_lt _ (Nat.succ_pos m)
-
-theorem Rig.step_linked {n : Nat} (c : ViewConfig Float) (r : Rig n) (i : Fin n) (inp : Input Float)
-    (h : r.linked i = true) : r.step c i inp = { r with group := r.group.step c i inp } := by
-  simp [Rig.step, h]
-
-theorem Rig.step_unlinked {n : Nat} (c : ViewConfig Float) (r : Rig n) (i : Fin n) (inp : Input Float)
-    (h : r.linked i = false) :
-    r.step c i inp =
-      { r with own := fun j => if j = i then (View.step c (r.view i) inp).x else r.own j,
-               group := { r.group with
-                 y := fun j => if j = i then (View.step c (r.view i) inp).y else r.group.y j } } := by
-  simp [Rig.step, h]
-
-theorem Rig.toggle_linked {n : Nat} (r : Rig n) (i : Fin n) (j : Fin n) :
-    (r.toggle i).linked j = if j = i then !r.linked i else r.linked j := rfl
-
-theorem Rig.toggle_own {n : Nat} (r : Rig n) (i : Fin n) (j : Fin n) :
-    (r.toggle i).own j = if j = i then r.group.x.scale else r.own j := rfl
 
 /-- `action`, `violation` and `run` are checked by running them: their results are decided by float
 comparisons, which have no lemmas to prove against. -/
@@ -118,15 +74,15 @@ private def within (c : Interval.Config Float) (a : Interval Float) : Bool :=
 
 /-- The first broken property after `a` takes `r` to `r'`: a limit, a link, a cursor, or a chart
 other than the one acted on moving, or unlinking one changing what it shows. -/
-def violation {n : Nat} (c : ViewConfig Float) (r r' : Rig n) (a : Action n) : Option String :=
+def violation {n : Nat} (c : ViewConfig Float) (r r' : Linked Float n) (a : Action n) : Option String :=
   let views := List.finRange n
   let limits := views.any fun j => !(within c.x (r'.view j).x && within c.y (r'.view j).y)
-  let linkedX := views.filter r'.linked |>.map fun j => (r'.view j).x
-  let desynced := linkedX.any fun x => x != r'.group.x.scale
+  let linkedX := views.filter r'.isLinked |>.map fun j => (r'.view j).x
+  let desynced := linkedX.any fun x => x != r'.x.scale
   let moved := match a with
     | .input i _ => views.any fun j => j != i && (r'.view j).y != (r.view j).y
     | .toggle i => views.any fun j => (r'.view j).y != (r.view j).y ||
-        (j != i && (r'.view j).x != (r.view j).x) || (!r'.linked i && r'.view i != r.view i)
+        (j != i && (r'.view j).x != (r.view j).x) || (!r'.isLinked i && r'.view i != r.view i)
   let drift := match a with
     | .input i (.wheel px py _) | .input i (.pinch px py _ _) =>
       let before := View.cursor c (r.view i) px py
@@ -143,17 +99,17 @@ def violation {n : Nat} (c : ViewConfig Float) (r r' : Rig n) (a : Action n) : O
 with no charts is reported, since it would check nothing. -/
 def run (c : ViewConfig Float) (n : Nat) (seed steps : Nat) : Option String :=
   if hn : 0 < n then
-    let rec go : Nat → Nat → Rig n → Option String
+    let rec go : Nat → Nat → Linked Float n → Option String
       | 0, _, _ => none
       | k + 1, s, r =>
         let (a, s) := action n hn s
         let r' := match a with
           | .input i inp => r.step c i inp
-          | .toggle i => r.toggle i
+          | .toggle i => if r.isLinked i then r.unlink i else r.relink i
         match violation c r r' a with
         | some e => some s!"step {steps - k}: {e}"
         | none => go k s r'
-    go steps seed (Rig.home c n)
+    go steps seed (home c n)
   else some "no charts to check"
 
 end Inkproof.Demo.Robot
