@@ -242,7 +242,44 @@ private def boundTest : Except String Unit := do
   let r : View.Range := ⟨n - 2, n⟩
   check (Bound.pixelError r 400 n > Bound.pixelError ⟨0, n⟩ 400 n) "deeper zoom has a larger bound"
 
-def main (args : List String) : IO UInt32 :=
+open Inkproof.Demo.MiniSeed in
+private def be (n k : Nat) : List UInt8 := (List.range k).reverse.map fun i => (n / 256 ^ i % 256).toUInt8
+
+open Inkproof.Demo.MiniSeed in
+/-- A 512-byte Steim1 record of `xs` (at most 26 samples) with every difference in a 16-bit half-word. -/
+private def steim1Record (xs : List Int) : ByteArray :=
+  let diffs := 0 :: (xs.zip (0 :: xs)).tail.map fun (a, b) => a - b
+  let pairs := (List.range ((diffs.length + 1) / 2)).map fun i =>
+    (diffs.drop (2 * i)).take 2 ++ [0] |>.take 2
+  let word (d : List Int) : Nat := d.foldl (fun acc v => acc * 65536 + (v % 65536).toNat) 0
+  let x0 : Int := xs.headD 0
+  let xn : Int := xs.getLastD 0
+  let nibbles := (List.range pairs.length).foldl (fun acc k => acc + 2 * 2 ^ (30 - 2 * (k + 3))) 0
+  let header := be 1 6 ++ [0x44, 0x20] ++ List.replicate 12 0x20 ++ be 2025 2 ++ be 60 2 ++ [0, 0, 0, 0] ++ be 0 2 ++
+    be xs.length 2 ++ be 100 2 ++ be 1 2 ++ [0, 0, 0, 0] ++ be 0 4 ++ be 64 2 ++ be 48 2 ++ be 1000 2 ++ be 0 2 ++ [10, 1, 9, 0] ++ List.replicate 8 0
+  let frame := be nibbles 4 ++ be (x0 % 4294967296).toNat 4 ++ be (xn % 4294967296).toNat 4 ++ (pairs.flatMap fun p => be (word p) 4)
+  ⟨((header ++ frame ++ List.replicate 512 0).take 512).toArray⟩
+
+open Inkproof.Demo.MiniSeed in
+private def miniSeedTest (real : ByteArray) : Except String Unit := do
+  match decodeFile real with
+  | .error e => check false s!"real excerpt decodes: {e}"
+  | .ok rs =>
+    check (rs.size == real.size / 512) s!"one record per 512 bytes: {rs.size}"
+    for (r, i) in rs.toList.zipIdx do
+      let lastWord := (real.extract (512 * i + 64 + 8) (512 * i + 64 + 12)).data.foldl (fun a x => a * 256 + x.toNat) 0
+      check (r.samples.back? == some (signExtend 32 lastWord)) s!"record {i} ends at the frame's reverse integration constant"
+    let times := rs.map fun r => r.tenthMs + 10000 * r.samples.size / 100
+    check ((rs.toList.zip rs.toList.tail).all fun (a, b) => a.tenthMs + 100 * a.samples.size == b.tenthMs)
+      s!"records are contiguous at 100 Hz: {times}"
+  let xs : List Int := [100, 105, 90, -20, -20, 7000, -20000, -5000, 0, 1]
+  match decodeFile (steim1Record xs) with
+  | .error e => check false s!"steim1 record decodes: {e}"
+  | .ok rs => check (rs[0]?.map (·.samples.toList) == some xs) s!"steim1 round trip: {rs.map (·.samples)}"
+  check (match decodeFile ⟨(steim1Record xs).data.extract 0 100⟩ with | .error _ => true | .ok _ => false) "truncated record is an error"
+
+def main (args : List String) : IO UInt32 := do
+  let real ← IO.FS.readBinFile "fixtures/IU.ANMO.00.HHZ.excerpt.mseed"
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩,
     platformTest (args.contains "--expect-wasm")]

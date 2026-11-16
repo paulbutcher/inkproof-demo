@@ -29,3 +29,7 @@
 ## Performance test
 
 `app/browser.test.mjs` loads the page under a 4x CPU slowdown, the stand-in for a mid-range phone, and checks that the first chart element draws within a second of navigation and that, across zooms and pans of the eight linked charts, the 95th percentile of requestAnimationFrame intervals stays within a frame at 60 Hz. Headless Chromium has no GPU, so this bounds main-thread stalls and is not a measurement on a phone. The displayed placement bound is qualified by the theorem's `NormalRange` hypotheses.
+
+## Real data pipeline
+
+Three separate steps, none of them part of `lake build`. `scripts/fetch.mjs` (Node, no packages) sends one EarthScope dataselect request per station, channel and day and one USGS catalogue query, writing miniSEED under `<data>/mseed/<id>/<day>.mseed` and CSV under `<data>/catalogue`; days already on disk are skipped, so an interrupted fetch resumes, and a day the service has no data for is recorded as an empty `.empty` file so it is not asked for again. Concurrency is two, with exponential backoff. `scripts/selection.json` pins the stations, the one-week default slice and the year. `Inkproof.Demo.MiniSeed` is a native module that does not import Lasm: it decodes miniSEED 2 records with Steim1 or Steim2 data in either byte order. It is tested against a real excerpt in `test/fixtures` (each record's last sample must equal the frame's reverse integration constant) and against a synthetic Steim1 record.

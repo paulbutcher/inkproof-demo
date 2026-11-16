@@ -1,0 +1,8 @@
+{
+  "slice": { "start": "2025-03-01", "days": 7 },
+  "year": { "start": "2025-01-01", "days": 365 },
+  "stations": [
+    { "net": "IU", "sta": "ANMO", "loc": "00", "cha": "HHZ" }
+  ],
+  "catalogue": { "minMagnitude": 5.5 }
+}

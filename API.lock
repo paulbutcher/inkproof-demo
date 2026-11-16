@@ -83,6 +83,46 @@ field Inkproof.Demo.Library.repo : Inkproof.Demo.Library → String
 field Inkproof.Demo.Library.sources : Inkproof.Demo.Library → Array (String × String)
 field Inkproof.Demo.Library.tag : Inkproof.Demo.Library → String
 def Inkproof.Demo.Library.theorems : Inkproof.Demo.Library → Array Inkproof.Demo.TheoremEntry
+structure Inkproof.Demo.MiniSeed.Record : Type
+field Inkproof.Demo.MiniSeed.Record.day : Inkproof.Demo.MiniSeed.Record → Nat
+field Inkproof.Demo.MiniSeed.Record.factor : Inkproof.Demo.MiniSeed.Record → Int
+constructor Inkproof.Demo.MiniSeed.Record.mk : Nat → Nat → Nat → Int → Int → Array Int → Inkproof.Demo.MiniSeed.Record
+field Inkproof.Demo.MiniSeed.Record.multiplier : Inkproof.Demo.MiniSeed.Record → Int
+field Inkproof.Demo.MiniSeed.Record.samples : Inkproof.Demo.MiniSeed.Record → Array Int
+field Inkproof.Demo.MiniSeed.Record.tenthMs : Inkproof.Demo.MiniSeed.Record → Nat
+field Inkproof.Demo.MiniSeed.Record.year : Inkproof.Demo.MiniSeed.Record → Nat
+def Inkproof.Demo.MiniSeed.decodeFile : ByteArray → Except String (Array Inkproof.Demo.MiniSeed.Record)
+theorem Inkproof.Demo.MiniSeed.decodeFile_empty : Inkproof.Demo.MiniSeed.decodeFile ByteArray.empty = Except.ok #[]
+def Inkproof.Demo.MiniSeed.decodeRecord : ByteArray → Except String Inkproof.Demo.MiniSeed.Record
+def Inkproof.Demo.MiniSeed.field : Nat → Nat → Nat → Nat
+theorem Inkproof.Demo.MiniSeed.field_lt : ∀ (w shift bits : Nat), Inkproof.Demo.MiniSeed.field w shift bits < 2 ^ bits
+instance Inkproof.Demo.MiniSeed.instReprRecord : Repr Inkproof.Demo.MiniSeed.Record
+def Inkproof.Demo.MiniSeed.instReprRecord.repr : Inkproof.Demo.MiniSeed.Record → Nat → Std.Format
+def Inkproof.Demo.MiniSeed.integrate : Int → Array Int → Nat → Array Int
+theorem Inkproof.Demo.MiniSeed.integrate_size : ∀ (x0 : Int) (diffs : Array Int) (n : Nat), (Inkproof.Demo.MiniSeed.integrate x0 diffs n).size = n
+def Inkproof.Demo.MiniSeed.isLittle : ByteArray → Except String Bool
+theorem Inkproof.Demo.MiniSeed.isLittle_eq : ∀ (b : ByteArray), 22 ≤ b.size → Inkproof.Demo.MiniSeed.isLittle b = Except.ok !(Decidable.decide (1900 ≤ (b.data[20]?.getD 0).toNat * 256 + (b.data[21]?.getD 0).toNat) && Decidable.decide ((b.data[20]?.getD 0).toNat * 256 + (b.data[21]?.getD 0).toNat ≤ 2200))
+def Inkproof.Demo.MiniSeed.signExtend : Nat → Nat → Int
+theorem Inkproof.Demo.MiniSeed.signExtend_of_ge : ∀ (bits v : Nat), 2 ^ (bits - 1) ≤ v % 2 ^ bits → Inkproof.Demo.MiniSeed.signExtend bits v = ↑(v % 2 ^ bits) - 2 ^ bits
+theorem Inkproof.Demo.MiniSeed.signExtend_of_lt : ∀ (bits v : Nat), v < 2 ^ (bits - 1) → 1 ≤ bits → Inkproof.Demo.MiniSeed.signExtend bits v = ↑v
+def Inkproof.Demo.MiniSeed.steim : Bool → Bool → ByteArray → Nat → Nat → Nat → Except String (Array Int)
+theorem Inkproof.Demo.MiniSeed.steim_no_samples : ∀ (steim2 little : Bool) (b : ByteArray) (start : Nat), Inkproof.Demo.MiniSeed.steim steim2 little b start 0 0 = Except.ok #[]
+theorem Inkproof.Demo.MiniSeed.steim_size : ∀ (steim2 little : Bool) (b : ByteArray) (start frames n : Nat) (r : Array Int), Inkproof.Demo.MiniSeed.steim steim2 little b start frames n = Except.ok r → r.size = n
+def Inkproof.Demo.MiniSeed.uint : ByteArray → Bool → Nat → Nat → Except String Nat
+theorem Inkproof.Demo.MiniSeed.uint_of_gt : ∀ (b : ByteArray) (little : Bool) (i n : Nat), b.size < i + n → Inkproof.Demo.MiniSeed.uint b little i n = Except.error (ToString.toString "read of " ++ ToString.toString n ++ ToString.toString " bytes at " ++ ToString.toString i ++ ToString.toString " runs past the end of the " ++ ToString.toString b.size ++ ToString.toString "-byte record")
+theorem Inkproof.Demo.MiniSeed.uint_of_le : ∀ (b : ByteArray) (little : Bool) (i n : Nat), i + n ≤ b.size → Inkproof.Demo.MiniSeed.uint b little i n = Except.ok (List.foldl (fun acc x => acc * 256 + x) 0 (if little = Bool.true then (List.map (fun k => (b.data[i + k]?.getD 0).toNat) (List.range n)).reverse else List.map (fun k => (b.data[i + k]?.getD 0).toNat) (List.range n)))
+def Inkproof.Demo.MiniSeed.unpack : Bool → Nat → Nat → Option (List Int)
+theorem Inkproof.Demo.MiniSeed.unpack_steim1_16 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.unpack Bool.false 2 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 16 (Inkproof.Demo.MiniSeed.field w (32 - 16 * (i + 1)) 16)) (List.range 2))
+theorem Inkproof.Demo.MiniSeed.unpack_steim1_32 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.unpack Bool.false 3 w = Option.some [Inkproof.Demo.MiniSeed.signExtend 32 (Inkproof.Demo.MiniSeed.field w 0 32)]
+theorem Inkproof.Demo.MiniSeed.unpack_steim1_8 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.unpack Bool.false 1 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 8 (Inkproof.Demo.MiniSeed.field w (32 - 8 * (i + 1)) 8)) (List.range 4))
+theorem Inkproof.Demo.MiniSeed.unpack_steim1_zero : ∀ (w : Nat), Inkproof.Demo.MiniSeed.unpack Bool.false 0 w = Option.none
+theorem Inkproof.Demo.MiniSeed.unpack_steim2_2x15 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.field w 30 2 = 2 → Inkproof.Demo.MiniSeed.unpack Bool.true 2 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 15 (Inkproof.Demo.MiniSeed.field w (30 - 15 * (i + 1)) 15)) (List.range 2))
+theorem Inkproof.Demo.MiniSeed.unpack_steim2_30 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.field w 30 2 = 1 → Inkproof.Demo.MiniSeed.unpack Bool.true 2 w = Option.some [Inkproof.Demo.MiniSeed.signExtend 30 (Inkproof.Demo.MiniSeed.field w 0 30)]
+theorem Inkproof.Demo.MiniSeed.unpack_steim2_3x10 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.field w 30 2 = 3 → Inkproof.Demo.MiniSeed.unpack Bool.true 2 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 10 (Inkproof.Demo.MiniSeed.field w (30 - 10 * (i + 1)) 10)) (List.range 3))
+theorem Inkproof.Demo.MiniSeed.unpack_steim2_5x6 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.field w 30 2 = 0 → Inkproof.Demo.MiniSeed.unpack Bool.true 3 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 6 (Inkproof.Demo.MiniSeed.field w (30 - 6 * (i + 1)) 6)) (List.range 5))
+theorem Inkproof.Demo.MiniSeed.unpack_steim2_6x5 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.field w 30 2 = 1 → Inkproof.Demo.MiniSeed.unpack Bool.true 3 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 5 (Inkproof.Demo.MiniSeed.field w (30 - 5 * (i + 1)) 5)) (List.range 6))
+theorem Inkproof.Demo.MiniSeed.unpack_steim2_7x4 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.field w 30 2 = 2 → Inkproof.Demo.MiniSeed.unpack Bool.true 3 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 4 (Inkproof.Demo.MiniSeed.field w (28 - 4 * (i + 1)) 4)) (List.range 7))
+theorem Inkproof.Demo.MiniSeed.unpack_steim2_8 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.unpack Bool.true 1 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 8 (Inkproof.Demo.MiniSeed.field w (32 - 8 * (i + 1)) 8)) (List.range 4))
 def Inkproof.Demo.Plot.column : Nat → Nat → Nat → Nat → Int × Int → Inkproof.Scene.Column
 theorem Inkproof.Demo.Plot.column_eq : ∀ (y0 height top x : Nat) (v : Int × Int), Inkproof.Demo.Plot.column y0 height top x v = { x := ↑x + 1 / 2, lo := ↑y0 + ↑(Inkproof.Demo.Stack.pixelY height top v.snd), hi := ↑y0 + ↑(Inkproof.Demo.Stack.pixelY height top v.fst) }
 def Inkproof.Demo.Plot.items : Nat → Nat → Nat → Inkproof.Core.Segmented Nat (Int × Int) → List (Inkproof.Scene.Item Inkproof.Scene.Column)
