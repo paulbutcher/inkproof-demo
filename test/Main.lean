@@ -3,6 +3,7 @@ Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Inkproof.Demo
+import Inkproof.Demo.Place
 import Inkproof.Viewport
 import Inkproof.Scene
 import Inkproof.Gpu
@@ -278,8 +279,21 @@ private def miniSeedTest (real : ByteArray) : Except String Unit := do
   | .ok rs => check (rs[0]?.map (·.samples.toList) == some xs) s!"steim1 round trip: {rs.map (·.samples)}"
   check (match decodeFile ⟨(steim1Record xs).data.extract 0 100⟩ with | .error _ => true | .ok _ => false) "truncated record is an error"
 
+open Inkproof.Demo in
+private def placeTest : Except String Unit := do
+  let rec' (t : Nat) (xs : List Int) : MiniSeed.Record := ⟨2025, 60, t, 100, 1, xs.toArray⟩
+  -- the second record starts at sample 53, leaving a gap after the first
+  let a := rec' 0 [1, 2, 3]
+  let b := { rec' 0 [4, 5] with tenthMs := 5300 }
+  let out := Place.place 100 60 #[a, b]
+  check (out.size == 8640000) "a day of 100 Hz samples"
+  check (out[0]? == some (some 1) && out[2]? == some (some 3)) "first record at its start"
+  check (out[3]? == some none && out[52]? == some none) "no record, no sample"
+  check (out[53]? == some (some 4) && out[54]? == some (some 5)) "second record at its start time"
+  check ((out.filter (·.isSome)).size == 5) "nothing else is filled"
+
 def main (args : List String) : IO UInt32 := do
   let real ← IO.FS.readBinFile "fixtures/IU.ANMO.00.HHZ.excerpt.mseed"
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩,
     platformTest (args.contains "--expect-wasm")]

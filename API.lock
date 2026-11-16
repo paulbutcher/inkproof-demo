@@ -123,6 +123,18 @@ theorem Inkproof.Demo.MiniSeed.unpack_steim2_5x6 : ∀ (w : Nat), Inkproof.Demo.
 theorem Inkproof.Demo.MiniSeed.unpack_steim2_6x5 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.field w 30 2 = 1 → Inkproof.Demo.MiniSeed.unpack Bool.true 3 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 5 (Inkproof.Demo.MiniSeed.field w (30 - 5 * (i + 1)) 5)) (List.range 6))
 theorem Inkproof.Demo.MiniSeed.unpack_steim2_7x4 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.field w 30 2 = 2 → Inkproof.Demo.MiniSeed.unpack Bool.true 3 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 4 (Inkproof.Demo.MiniSeed.field w (28 - 4 * (i + 1)) 4)) (List.range 7))
 theorem Inkproof.Demo.MiniSeed.unpack_steim2_8 : ∀ (w : Nat), Inkproof.Demo.MiniSeed.unpack Bool.true 1 w = Option.some (List.map (fun i => Inkproof.Demo.MiniSeed.signExtend 8 (Inkproof.Demo.MiniSeed.field w (32 - 8 * (i + 1)) 8)) (List.range 4))
+def Inkproof.Demo.Place.covers : Nat → Nat → Inkproof.Demo.MiniSeed.Record → Nat → Prop
+def Inkproof.Demo.Place.place : Nat → Nat → Array Inkproof.Demo.MiniSeed.Record → Array (Option Int)
+theorem Inkproof.Demo.Place.place_empty : ∀ (rate day : Nat), Inkproof.Demo.Place.place rate day #[] = Array.replicate (86400 * rate) Option.none
+theorem Inkproof.Demo.Place.place_getElem?_of_last : ∀ (rate day : Nat) (pre post : List Inkproof.Demo.MiniSeed.Record) (r : Inkproof.Demo.MiniSeed.Record) (j : Nat) (v : Int), j < 86400 * rate → (∀ (q : Inkproof.Demo.MiniSeed.Record), q ∈ post → ¬Inkproof.Demo.Place.covers rate day q j) → Inkproof.Demo.Place.startIndex rate day r ≤ j → r.samples.toList[j - Inkproof.Demo.Place.startIndex rate day r]? = Option.some v → (Inkproof.Demo.Place.place rate day (pre ++ r :: post).toArray)[j]? = Option.some (Option.some v)
+theorem Inkproof.Demo.Place.place_getElem?_of_uncovered : ∀ (rate day : Nat) (rs : Array Inkproof.Demo.MiniSeed.Record) (j : Nat), (∀ (r : Inkproof.Demo.MiniSeed.Record), r ∈ rs → ¬Inkproof.Demo.Place.covers rate day r j) → (Inkproof.Demo.Place.place rate day rs)[j]? = (Array.replicate (86400 * rate) Option.none)[j]?
+theorem Inkproof.Demo.Place.place_size : ∀ (rate day : Nat) (rs : Array Inkproof.Demo.MiniSeed.Record), (Inkproof.Demo.Place.place rate day rs).size = 86400 * rate
+def Inkproof.Demo.Place.put : Array (Option Int) → Nat → List Int → Array (Option Int)
+theorem Inkproof.Demo.Place.put_getElem?_of_get : ∀ (l : List Int) (a : Array (Option Int)) (i j : Nat) (v : Int), i ≤ j → j < a.size → l[j - i]? = Option.some v → (Inkproof.Demo.Place.put a i l)[j]? = Option.some (Option.some v)
+theorem Inkproof.Demo.Place.put_getElem?_of_lt : ∀ (l : List Int) (a : Array (Option Int)) (i j : Nat), j < i ∨ i + l.length ≤ j → (Inkproof.Demo.Place.put a i l)[j]? = a[j]?
+theorem Inkproof.Demo.Place.put_size : ∀ (l : List Int) (a : Array (Option Int)) (i : Nat), (Inkproof.Demo.Place.put a i l).size = a.size
+def Inkproof.Demo.Place.startIndex : Nat → Nat → Inkproof.Demo.MiniSeed.Record → Nat
+theorem Inkproof.Demo.Place.startIndex_same_day : ∀ (rate day : Nat) (r : Inkproof.Demo.MiniSeed.Record), r.day = day → Inkproof.Demo.Place.startIndex rate day r = r.tenthMs * rate / 10000
 def Inkproof.Demo.Plot.column : Nat → Nat → Nat → Nat → Int × Int → Inkproof.Scene.Column
 theorem Inkproof.Demo.Plot.column_eq : ∀ (y0 height top x : Nat) (v : Int × Int), Inkproof.Demo.Plot.column y0 height top x v = { x := ↑x + 1 / 2, lo := ↑y0 + ↑(Inkproof.Demo.Stack.pixelY height top v.snd), hi := ↑y0 + ↑(Inkproof.Demo.Stack.pixelY height top v.fst) }
 def Inkproof.Demo.Plot.items : Nat → Nat → Nat → Inkproof.Core.Segmented Nat (Int × Int) → List (Inkproof.Scene.Item Inkproof.Scene.Column)

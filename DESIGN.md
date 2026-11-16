@@ -26,6 +26,8 @@
 
 `Inkproof.Demo.Tiles` is a native module that does not import Lasm. Each level of a station's pyramid is cut into files of `tileSize` nodes, `s<station>/l<level>/t<n>.bin`, and a node is two little-endian 16-bit words, lowest then highest, with the gap word twice for a node with no samples (`decodeNode_encodeNode`, `decodeNode_gap`). `lake exe build-tiles <dir>` writes the files and a `manifest.json` of level sizes; `lake test` writes them to `app/web/public/tiles` before the Vite build, so the static site carries them. The stations are listed in `gen/BuildTilesMain.lean` and again in `app/App.lean`.
 
+`Inkproof.Demo.Place` puts the samples of each miniSEED record on a grid of `rate` samples per second from the start of a day (`place`, of size `place_size`); a stretch no record covers stays `none`, so an outage becomes a gap. `gen/BuildRealTilesMain.lean` reads a station's day files, scales counts into 16 bits if they exceed it, and writes the same tiles as above. It is not yet an executable of the build: it ran here through the interpreter (`lake lean` with an `#eval`), which took an hour for one day, so a year needs it compiled and a faster pyramid build.
+
 ## Performance test
 
 `app/browser.test.mjs` loads the page under a 4x CPU slowdown, the stand-in for a mid-range phone, and checks that the first chart element draws within a second of navigation and that, across zooms and pans of the eight linked charts, the 95th percentile of requestAnimationFrame intervals stays within a frame at 60 Hz. Headless Chromium has no GPU, so this bounds main-thread stalls and is not a measurement on a phone. The displayed placement bound is qualified by the theorem's `NormalRange` hypotheses.

@@ -35,3 +35,7 @@ lean_exe «theorem-index» where
 lean_exe «build-tiles» where
   root := `BuildTilesMain
   srcDir := "gen"
+
+lean_exe «build-real-tiles» where
+  root := `BuildRealTilesMain
+  srcDir := "gen"
