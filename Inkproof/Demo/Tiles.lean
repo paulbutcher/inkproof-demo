@@ -82,6 +82,13 @@ theorem tileBytes_size (level : Array Extent) (j : Nat) :
   simp [ByteArray.size, h]
   omega
 
+/-- Levels `0` to `j` of the pyramid over `xs`, so a long recording can be built in chunks and joined at level `j`. -/
+def chunkLevels (j : Nat) (xs : Array (Option Int)) : Array (Array Extent) :=
+  (Pyramid.ofMeasure 2 (by omega) Seismic.extent xs).levels.extract 0 (j + 1)
+
+theorem chunkLevels_eq (j : Nat) (xs : Array (Option Int)) :
+    chunkLevels j xs = (Pyramid.ofMeasure 2 (by omega) Seismic.extent xs).levels.extract 0 (j + 1) := rfl
+
 /-- The path of tile `j` of level `k` of station `s`. -/
 def tilePath (s k j : Nat) : String := s!"s{s}/l{k}/t{j}.bin"
 
@@ -105,9 +112,11 @@ theorem stationTiles_size (s : Nat) (p : Pyramid Extent) :
   | cons x xs ih => simp [List.zipIdx_cons, ih]
 
 /-- A description of the tile set for the browser: station count, then per station the node count of each level. No theorem: the string is JSON built by concatenation, and a statement about it needs a JSON parser the demo does not have. -/
-def manifest (ps : Array (Pyramid Extent)) : String :=
+def manifestOfSizes (sizes : Array (Array Nat)) : String :=
   s!"\{\"tileSize\":{tileSize},\"stations\":[" ++
-    ",".intercalate (ps.toList.map fun p =>
-      "[" ++ ",".intercalate (p.levels.toList.map fun l => toString l.size) ++ "]") ++ "]}"
+    ",".intercalate (sizes.toList.map fun ls => "[" ++ ",".intercalate (ls.toList.map toString) ++ "]") ++ "]}"
+
+def manifest (ps : Array (Pyramid Extent)) : String :=
+  manifestOfSizes (ps.map fun p => p.levels.map (·.size))
 
 end Inkproof.Demo.Tiles

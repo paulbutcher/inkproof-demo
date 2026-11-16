@@ -220,6 +220,8 @@ constructor Inkproof.Demo.TheoremEntry.mk : String → String → String → Str
 field Inkproof.Demo.TheoremEntry.name : Inkproof.Demo.TheoremEntry → String
 field Inkproof.Demo.TheoremEntry.statement : Inkproof.Demo.TheoremEntry → String
 field Inkproof.Demo.TheoremEntry.url : Inkproof.Demo.TheoremEntry → String
+def Inkproof.Demo.Tiles.chunkLevels : Nat → Array (Option Int) → Array (Array Inkproof.Demo.Seismic.Extent)
+theorem Inkproof.Demo.Tiles.chunkLevels_eq : ∀ (j : Nat) (xs : Array (Option Int)), Inkproof.Demo.Tiles.chunkLevels j xs = (Inkproof.Core.Pyramid.ofMeasure 2 ⋯ Inkproof.Demo.Seismic.extent xs).levels.extract 0 (j + 1)
 def Inkproof.Demo.Tiles.decodeNode : List UInt8 → Option (Option (Int × Int))
 theorem Inkproof.Demo.Tiles.decodeNode_encodeNode : ∀ (e : Inkproof.Demo.Seismic.Extent) (a b : Int), Inkproof.Demo.Stack.span e = Option.some (a, b) → -32767 ≤ a → a < 32768 → -32768 ≤ b → b < 32768 → Inkproof.Demo.Tiles.decodeNode (Inkproof.Demo.Tiles.encodeNode e) = Option.some (Option.some (a, b))
 theorem Inkproof.Demo.Tiles.decodeNode_gap : ∀ (e : Inkproof.Demo.Seismic.Extent), Inkproof.Demo.Stack.span e = Option.none → Inkproof.Demo.Tiles.decodeNode (Inkproof.Demo.Tiles.encodeNode e) = Option.some Option.none
@@ -230,6 +232,7 @@ theorem Inkproof.Demo.Tiles.encodeNode_length : ∀ (e : Inkproof.Demo.Seismic.E
 def Inkproof.Demo.Tiles.encodeWord : Int → Nat
 def Inkproof.Demo.Tiles.gapWord : Int
 def Inkproof.Demo.Tiles.manifest : Array (Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent) → String
+def Inkproof.Demo.Tiles.manifestOfSizes : Array (Array Nat) → String
 def Inkproof.Demo.Tiles.stationTiles : Nat → Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent → Array (String × ByteArray)
 theorem Inkproof.Demo.Tiles.stationTiles_size : ∀ (s : Nat) (p : Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent), (Inkproof.Demo.Tiles.stationTiles s p).size = (List.map Inkproof.Demo.Tiles.tileCount p.levels.toList).sum
 def Inkproof.Demo.Tiles.tileBytes : Array Inkproof.Demo.Seismic.Extent → Nat → ByteArray

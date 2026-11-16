@@ -7,31 +7,66 @@ import Inkproof.Demo.Tiles
 
 open Inkproof.Demo Inkproof.Core
 
-/-- The samples of one station and channel directory of day files named `<date>.mseed`, a day after another from the first. -/
-def loadStation (dir : System.FilePath) : IO (Array (Option Int)) := do
-  let files := (← dir.readDir).map (·.path) |>.qsort (·.toString < ·.toString)
-  let mut out : Array (Option Int) := #[]
-  let mut day0 := 0
-  for f in files, i in List.range files.size do
-    let rs ← IO.ofExcept (MiniSeed.decodeFile (← IO.FS.readBinFile f))
+/-- Leaves per chunk, a power of two so a chunk's nodes line up with the whole pyramid's. -/
+def chunkLog : Nat := 20
+
+/-- The level at which chunks are joined: its nodes are the leaves of the pyramid above. -/
+def joinLevel : Nat := 12
+
+def dayFiles (dir : System.FilePath) : IO (Array System.FilePath) := do
+  let files := (← dir.readDir).map (·.path) |>.filter (·.extension == some "mseed")
+  return files.qsort (·.toString < ·.toString)
+
+/-- Calls `f` on each day's samples, in order, with `none` for each day that has no file. -/
+def forDays (dir : System.FilePath) (f : Array (Option Int) → IO Unit) : IO Unit := do
+  let mut next : Option Nat := none
+  for file in ← dayFiles dir do
+    let rs ← IO.ofExcept (MiniSeed.decodeFile (← IO.FS.readBinFile file))
     let some r := rs[0]? | continue
-    if i == 0 then day0 := r.day
-    let rate := (Int.toNat r.factor)
-    out := out ++ Place.place rate r.day rs
-  return out
+    let rate := Int.toNat r.factor
+    if let some n := next then
+      if r.day > n then f (Array.replicate ((r.day - n) * 86400 * rate) none)
+    f (Place.place rate r.day rs)
+    next := some (r.day + 1)
+
+def writeTiles (out : System.FilePath) (k : Nat) (first : Nat) (level : Array Seismic.Extent) : IO Unit := do
+  IO.FS.createDirAll (out / s!"s0/l{k}")
+  for j in List.range (Tiles.tileCount level) do
+    IO.FS.writeBinFile (out / Tiles.tilePath 0 k (first + j)) (Tiles.tileBytes level j)
 
 def main (args : List String) : IO UInt32 := do
-  let [data, dir] := args | IO.eprintln "usage: build-real-tiles <mseed station dir> <output dir>"; return 1
-  let raw ← loadStation data
-  let top := raw.foldl (fun m v => max m (v.getD 0).natAbs) 0
-  let d : Int := (top + 32766) / 32767
-  let d := max d 1
-  let samples := raw.map (·.map fun v => v / d)
-  let p := Pyramid.ofMeasure 2 (by omega) Seismic.extent samples
-  for (path, bytes) in Tiles.stationTiles 0 p do
-    let file : System.FilePath := dir / path
-    if let some parent := file.parent then IO.FS.createDirAll parent
-    IO.FS.writeBinFile file bytes
-  IO.FS.writeFile (dir / "manifest.json") (Tiles.manifest #[p])
-  IO.println s!"{samples.size} samples, {(samples.filter (·.isNone)).size} in gaps, counts divided by {d}"
+  let [data, out] := args | IO.eprintln "usage: build-real-tiles <mseed station dir> <output dir>"; return 1
+  let top ← IO.mkRef 0
+  forDays data fun day => top.modify (day.foldl (fun m v => max m (v.getD 0).natAbs))
+  let d : Int := max (((← top.get) + 32766) / 32767) 1
+  let chunk := 2 ^ chunkLog
+  let buf ← IO.mkRef (#[] : Array (Option Int))
+  let joined ← IO.mkRef (#[] : Array Seismic.Extent)
+  let chunks ← IO.mkRef 0
+  let total ← IO.mkRef 0
+  let gaps ← IO.mkRef 0
+  let flush (xs : Array (Option Int)) : IO Unit := do
+    let n ← chunks.get
+    chunks.set (n + 1)
+    let levels := Tiles.chunkLevels joinLevel (xs.map (·.map (· / d)))
+    for (level, k) in levels.toList.zipIdx do
+      writeTiles out k (n * 2 ^ (chunkLog - k) / Tiles.tileSize) level
+    joined.modify (· ++ levels.back?.getD #[])
+  forDays data fun day => do
+    total.modify (· + day.size)
+    gaps.modify (· + (day.filter (·.isNone)).size)
+    buf.modify (· ++ day)
+    while (← buf.get).size ≥ chunk do
+      let b ← buf.get
+      buf.set (b.extract chunk b.size)
+      flush (b.extract 0 chunk)
+  if (← buf.get).size > 0 then flush (← buf.get)
+  let upper := Pyramid.build 2 (by omega) (← joined.get)
+  for (level, k) in upper.levels.toList.zipIdx do
+    if k > 0 then writeTiles out (joinLevel + k) 0 level
+  let n ← total.get
+  let low := (List.range (joinLevel + 1)).map fun k => (n + 2 ^ k - 1) / 2 ^ k
+  let high := (upper.levels.toList.drop 1).map (·.size)
+  IO.FS.writeFile (out ++ "/manifest.json") (Tiles.manifestOfSizes #[(low ++ high).toArray])
+  IO.println s!"{n} samples, {← gaps.get} in gaps, counts divided by {d}"
   return 0

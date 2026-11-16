@@ -292,8 +292,21 @@ private def placeTest : Except String Unit := do
   check (out[53]? == some (some 4) && out[54]? == some (some 5)) "second record at its start time"
   check ((out.filter (·.isSome)).size == 5) "nothing else is filled"
 
+private def chunkedTest : Except String Unit := do
+  let xs : Array (Option Int) := (Array.range 45).map fun i => if i % 11 == 4 then none else some ((i * 37 % 19 : Nat) : Int)
+  let bytes (l : Array Seismic.Extent) := l.toList.flatMap Tiles.encodeNode
+  let whole := (Inkproof.Core.Pyramid.ofMeasure 2 (by omega) Seismic.extent xs).levels
+  let chunks := (List.range 6).map fun c => Tiles.chunkLevels 2 (xs.extract (c * 8) (c * 8 + 8))
+  for k in List.range 3 do
+    let joined := chunks.foldl (fun acc ls => acc ++ (ls[k]?.getD #[])) #[]
+    check (bytes joined == bytes (whole[k]?.getD #[])) s!"chunks joined at level {k}"
+  let joined := chunks.foldl (fun acc ls => acc ++ (ls.back?.getD #[])) #[]
+  let upper := (Inkproof.Core.Pyramid.build 2 (by omega) joined).levels
+  for k in List.range upper.size do
+    check (bytes (upper[k]?.getD #[]) == bytes (whole[k + 2]?.getD #[])) s!"upper level {k} above the join"
+
 def main (args : List String) : IO UInt32 := do
   let real ← IO.FS.readBinFile "fixtures/IU.ANMO.00.HHZ.excerpt.mseed"
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩,
     platformTest (args.contains "--expect-wasm")]
