@@ -3,6 +3,7 @@ Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Inkproof.Demo
+import Inkproof.Viewport
 import InkproofTools.Test.Harness
 import InkproofTools.Test.Platform
 
@@ -94,6 +95,16 @@ private def tcbTest : Except String Unit := do
   for k in [CodeKind.template, .generated, .shim] do
     check ((html.splitOn k.label).length > 1) s!"row for {k.label}"
 
+private def robotConfig : Inkproof.Viewport.ViewConfig Float :=
+  let axis : Inkproof.Viewport.Interval.Config Float :=
+    { length := 800, minSpan := 0.5, maxSpan := 1000, home := ⟨0, 100⟩, keyZoom := 1.25, keyPan := 0.1 }
+  ⟨axis, { axis with length := 400 }⟩
+
+def robotTest : Except String Unit := do
+  for seed in [1:101] do
+    if let some e := Robot.run robotConfig 4 seed 1000 then
+      check false s!"seed {seed}: {e}"
+
 def main (args : List String) : IO UInt32 :=
-  runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩,
+  runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
     platformTest (args.contains "--expect-wasm")]
