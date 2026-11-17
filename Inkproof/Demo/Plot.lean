@@ -45,11 +45,16 @@ theorem traces_getElem (paint : Paint) (qs : Array (Nat → Nat → Extent)) (r 
         (Stack.drawn (qs[i]'(by simpa [size_traces] using h)) r.lo r.hi cols))⟩ := by
   simp [traces]
 
+/-- The pixel columns of `cols` across the samples `r`, the sample `t` falling in column `(bins r cols).col t`. -/
+def bins (r : Range) (cols : Nat) : Binning Nat := Binning.ofNat r.lo r.hi (max cols 1) (by omega)
+
+theorem bins_columns (r : Range) (cols : Nat) : (bins r cols).columns = max cols 1 := rfl
+
 /-- The quakes in `r` as markers in the top row of a chart `cols` columns wide. -/
 def quakes (style : ScatterStyle) (qs : Array Quake) (r : Range) (cols : Nat) : DisplayList :=
   (inView r qs).map fun q =>
     ⟨style.paint.layer, style.paint.color,
-      .marker style.shape ⟨((View.column r cols q.time : Nat) : Rat) + 1 / 2, style.radius⟩ style.radius⟩
+      .marker style.shape ⟨(((bins r cols).col q.time : Nat) : Rat) + 1 / 2, style.radius⟩ style.radius⟩
 
 theorem size_quakes (style : ScatterStyle) (qs : Array Quake) (r : Range) (cols : Nat) :
     (quakes style qs r cols).size = (inView r qs).size := by
@@ -60,7 +65,7 @@ theorem quakes_getElem (style : ScatterStyle) (qs : Array Quake) (r : Range) (co
     (quakes style qs r cols)[i] =
       ⟨style.paint.layer, style.paint.color,
         .marker style.shape
-          ⟨((View.column r cols ((inView r qs)[i]'(by simpa [size_quakes] using h)).time : Nat) : Rat) + 1 / 2,
+          ⟨(((bins r cols).col ((inView r qs)[i]'(by simpa [size_quakes] using h)).time : Nat) : Rat) + 1 / 2,
             style.radius⟩ style.radius⟩ := by
   simp [quakes]
 

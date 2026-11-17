@@ -205,23 +205,23 @@ private def tilesTest : Except String Unit := do
   let st : Seismic.Station := { seed := 5, outages := [(300, 700), (1500, 1600)] }
   let p := st.pyramid 2048
   for (level, k) in p.levels.toList.zipIdx do
-    let nodes := (List.range (Tiles.tileCount level)).flatMap fun j =>
-      let bs := (Tiles.tileBytes level j).toList
+    let nodes := (List.range (p.numTiles Tiles.tileSize k)).flatMap fun j =>
+      let bs := (Tiles.tileBytes p k j).toList
       (List.range (bs.length / 4)).map fun i => (Tiles.decodeNode (bs.drop (4 * i) |>.take 4)).getD none
     check (nodes == level.toList.map Stack.span) s!"level {k}: tiles decode to the pyramid's nodes"
-    let read := (List.range (Tiles.tileCount level)).flatMap fun j => TileRead.decodeTile (Tiles.tileBytes level j)
+    let read := (List.range (p.numTiles Tiles.tileSize k)).flatMap fun j => TileRead.decodeTile (Tiles.tileBytes p k j)
     check (read == level.toList.map fun e => some (Stack.span e)) s!"level {k}: decodeTile reads the nodes back"
-  check ((Tiles.stationTiles 0 p).size == (p.levels.toList.map Tiles.tileCount).sum) "one file per tile"
+  check ((Tiles.stationTiles 0 p).size == ((List.range p.levels.size).map fun k => p.numTiles Tiles.tileSize k).sum) "one file per tile"
 
 private def loadedTest : Except String Unit := do
   let st : Seismic.Station := { seed := 5, outages := [(300, 700), (1500, 1600)] }
   let p := st.pyramid 2048
   for k in [0, 3, 6] do
-    let some level := p.levels[k]? | throw s!"no level {k}"
-    let tile (j : Nat) : Array Seismic.Extent := (Loaded.tileNodes (Tiles.tileBytes level j)).getD #[]
-    for j in [0:Tiles.tileCount level] do
-      check ((Loaded.tileNodes (Tiles.tileBytes level j)).map (·.toList) ==
-          (TileRead.decodeTile (Tiles.tileBytes level j)).mapM Loaded.nodeExtent)
+    let some _ := p.levels[k]? | throw s!"no level {k}"
+    let tile (j : Nat) : Array Seismic.Extent := (Loaded.tileNodes (Tiles.tileBytes p k j)).getD #[]
+    for j in [0:p.numTiles Tiles.tileSize k] do
+      check ((Loaded.tileNodes (Tiles.tileBytes p k j)).map (·.toList) ==
+          (TileRead.decodeTile (Tiles.tileBytes p k j)).mapM Loaded.nodeExtent)
         s!"level {k}, tile {j}: tileNodes agrees with decodeTile"
     check (Loaded.tileNodes (ByteArray.mk #[1, 2, 3]) == none) "a ragged tile file is refused"
     for (lo, hi) in [(0, 2048), (5, 17), (290, 310), (1490, 1700), (700, 701), (1000, 1033)] do
@@ -349,7 +349,7 @@ private def chunkedTest : Except String Unit := do
   let xs : Array (Option Int) := (Array.range 45).map fun i => if i % 11 == 4 then none else some ((i * 37 % 19 : Nat) : Int)
   let bytes (l : Array Seismic.Extent) := l.toList.flatMap Tiles.encodeNode
   let whole := (Inkproof.Core.Pyramid.ofMeasure 2 (by omega) Seismic.extent xs).levels
-  let chunks := (List.range 6).map fun c => Tiles.chunkLevels 2 (xs.extract (c * 8) (c * 8 + 8))
+  let chunks := (List.range 6).map fun c => (Inkproof.Core.Pyramid.ofMeasure 2 (by omega) Seismic.extent (xs.extract (c * 8) (c * 8 + 8))).levels.extract 0 3
   for k in List.range 3 do
     let joined := chunks.foldl (fun acc ls => acc ++ (ls[k]?.getD #[])) #[]
     check (bytes joined == bytes (whole[k]?.getD #[])) s!"chunks joined at level {k}"

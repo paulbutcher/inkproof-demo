@@ -2,6 +2,7 @@
 Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
+import Inkproof.Core.Proofs.Tile
 import Inkproof.Demo.Stack
 
 namespace Inkproof.Demo.Tiles
@@ -59,35 +60,22 @@ theorem decodeNode_gap (e : Extent) (h : Stack.span e = none) : decodeNode (enco
 /-- Nodes per tile file. -/
 def tileSize : Nat := 256
 
-/-- The nodes of `level` held by tile `j`, as bytes. -/
-def tileBytes (level : Array Extent) (j : Nat) : ByteArray :=
-  ⟨((level.extract (j * tileSize) ((j + 1) * tileSize)).toList.flatMap encodeNode).toArray⟩
+/-- The bytes of tile `j` of level `k` of `p`, cut by Core's `Pyramid.tile`. -/
+def tileBytes (p : Pyramid Extent) (k j : Nat) : ByteArray :=
+  ⟨((p.tile tileSize k j).toList.flatMap encodeNode).toArray⟩
 
 theorem encodeNode_length (e : Extent) : (encodeNode e).length = 4 := by
   simp [encodeNode]
 
-def tileCount (level : Array Extent) : Nat := (level.size + tileSize - 1) / tileSize
-
-theorem tileCount_mul (level : Array Extent) : level.size ≤ tileCount level * tileSize := by
-  unfold tileCount tileSize; omega
-
-theorem tileBytes_size (level : Array Extent) (j : Nat) :
-    (tileBytes level j).size = 4 * (min ((j + 1) * tileSize) level.size - j * tileSize) := by
+theorem tileBytes_size (p : Pyramid Extent) (k j : Nat) :
+    (tileBytes p k j).size = 4 * (min ((j + 1) * tileSize) (p.levels.getD k #[]).size - j * tileSize) := by
   unfold tileBytes
   have h : ∀ l : List Extent, (l.flatMap encodeNode).length = 4 * l.length := by
     intro l
     induction l with
     | nil => simp
     | cons x xs ih => simp [encodeNode_length, ih]; omega
-  simp [ByteArray.size, h]
-  omega
-
-/-- Levels `0` to `j` of the pyramid over `xs`, so a long recording can be built in chunks and joined at level `j`. -/
-def chunkLevels (j : Nat) (xs : Array (Option Int)) : Array (Array Extent) :=
-  (Pyramid.ofMeasure 2 (by omega) Seismic.extent xs).levels.extract 0 (j + 1)
-
-theorem chunkLevels_eq (j : Nat) (xs : Array (Option Int)) :
-    chunkLevels j xs = (Pyramid.ofMeasure 2 (by omega) Seismic.extent xs).levels.extract 0 (j + 1) := rfl
+  simp only [ByteArray.size, List.size_toArray, h, Array.length_toList, Pyramid.size_tile]
 
 /-- A sample as one little-endian 16-bit word, the gap word for a sample not recorded. -/
 def rawSample (x : Option Int) : List UInt8 :=
@@ -133,22 +121,14 @@ def tilePath (s k j : Nat) : String := s!"s{s}/l{k}/t{j}.bin"
 
 /-- Every tile of a station's pyramid with its path. -/
 def stationTiles (s : Nat) (p : Pyramid Extent) : Array (String × ByteArray) :=
-  (p.levels.toList.zipIdx.flatMap fun (level, k) =>
-    (List.range (tileCount level)).map fun j => (tilePath s k j, tileBytes level j)).toArray
+  ((List.range p.levels.size).flatMap fun k =>
+    (List.range (p.numTiles tileSize k)).map fun j => (tilePath s k j, tileBytes p k j)).toArray
 
 theorem tilePath_eq (s k j : Nat) : tilePath s k j = s!"s{s}/l{k}/t{j}.bin" := rfl
 
 theorem stationTiles_size (s : Nat) (p : Pyramid Extent) :
-    (stationTiles s p).size = (p.levels.toList.map tileCount).sum := by
-  unfold stationTiles
-  simp only [List.size_toArray, List.length_flatMap, List.length_map, List.length_range]
-  generalize p.levels.toList = ls
-  suffices ∀ n, ((ls.zipIdx n).map fun x => tileCount x.1).sum = (ls.map tileCount).sum by
-    simpa using this 0
-  intro n
-  induction ls generalizing n with
-  | nil => simp
-  | cons x xs ih => simp [List.zipIdx_cons, ih]
+    (stationTiles s p).size = ((List.range p.levels.size).map fun k => p.numTiles tileSize k).sum := by
+  simp [stationTiles, List.length_flatMap]
 
 /-- A description of the tile set for the browser: the first level written (finer ones are read from the raw samples), then per station the node count of each level from there. No theorem: the string is JSON built by concatenation, and a statement about it needs a JSON parser the demo does not have. -/
 def manifestOfSizes (firstLevel : Nat) (sizes : Array (Array Nat)) : String :=

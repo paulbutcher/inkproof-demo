@@ -2,6 +2,25 @@
 
 Part of Inkproof. Released under the Apache 2.0 license; see `LICENSE`.
 
+An application, not a library: a browser demo of seismic recordings and earthquakes charted with the Inkproof libraries. Nothing depends on it, so there is nothing to require; clone it and follow the steps below. It uses `inkproof-web`, `inkproof-export` and `inkproof-core` at release tags.
+
+## What it does
+
+The public modules under `Inkproof/Demo/`, by job:
+
+- Decode miniSEED recordings (Steim 1 and 2, either byte order): `MiniSeed.decodeFile`, `MiniSeed.decodeRecord`.
+- Lay decoded records out on a regular sample grid with gaps: `Place.place`.
+- Cut a station into tile files and a manifest, using Core's pyramid: `Tiles.stationTiles`, `Tiles.tileBytes`, `Tiles.manifest`, `Tiles.encodeNode`, `Tiles.rawBytes`.
+- Read tiles back into min/max extents for a pixel range: `TileRead.levelFor`, `TileRead.nodeRange`, `Loaded.tileNodes`, `Loaded.levelQuery`, `Manifest.parse`.
+- Parse and write the earthquake catalogue (USGS CSV to `catalogue.json`): `Catalogue.parseCsv`, `Catalogue.toJson`, `Catalogue.parseJson`.
+- Turn extents and quakes into chart items for a view range: `Plot.traces`, `Plot.quakes`, `Plot.bins`, `Plot.src`, `Stack.traces`, `Stack.outline`, `Seismic.markers`, `View.inView`.
+- Draw a display list to GPU commands or raw pixels: `Draw.frame`, `Draw.tile`, `Draw.bytes`.
+- Compute the guaranteed pixel error bound shown in the app: `Bound.pixelError`.
+- Compare guaranteed and naive decimation and read a pixel column: `Inspect.inspect`, `Inspect.Decimation.apply`, `Series.points`.
+- Drive random pan and zoom against the linked-view invariants: `Robot.run`.
+- List the proved guarantees and the trusted computing base for the page: `Library.html`, `Library.theorems`, `Inspect.guaranteeStatement`, `TcbRow`.
+- Choose how the code panel labels a file: `CodeKind.ofNat`, `CodeKind.matches`.
+
 ## Data
 
 The demo charts public seismic recordings and earthquakes. Fetching is a separate step from building, and nothing here runs it for you.

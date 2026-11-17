@@ -37,17 +37,6 @@ theorem Range.ofInterval_valid (n : Nat) (hn : 0 < n) (a : Inkproof.Viewport.Int
   simp only [Range.Valid, Range.ofInterval]
   omega
 
-/-- The pixel column, of `cols`, in which sample `t` falls. -/
-def column (r : Range) (cols t : Nat) : Nat := (t - r.lo) * cols / r.width
-
-theorem column_eq (r : Range) (cols t : Nat) : column r cols t = (t - r.lo) * cols / (r.hi - r.lo) := rfl
-
-theorem column_lt (r : Range) (cols t : Nat) (hc : 0 < cols) (h : r.lo ≤ t) (ht : t < r.hi) : column r cols t < cols := by
-  unfold column
-  apply Nat.div_lt_of_lt_mul
-  have : t - r.lo < r.width := by unfold Range.width; omega
-  exact Nat.mul_lt_mul_of_pos_right this hc
-
 /-- The quakes whose time lies inside `r`. -/
 def inView (r : Range) (qs : Array Seismic.Quake) : Array Seismic.Quake :=
   qs.filter fun q => r.lo ≤ q.time && q.time < r.hi
