@@ -9,22 +9,27 @@ import Inkproof.Web.Host.Chart
 
 open Lasm.UI Inkproof.Web.Host Inkproof.Demo Inkproof.Demo.Inspect Inkproof.Demo.View Inkproof.Viewport
 
-def sampleCount : Nat := 4096
 def chartCols : Nat := 400
 def trackHeight : Nat := 100
 def chartHeight : Nat := 200
 
-def axisConfig : Interval.Config Rat :=
+def axisConfig (sampleCount : Nat) : Interval.Config Rat :=
   { length := chartCols, minSpan := 2, maxSpan := sampleCount, home := ⟨0, sampleCount⟩, keyZoom := 2, keyPan := 1 / 4 }
 
-def viewConfig : ViewConfig Rat := ⟨axisConfig, axisConfig⟩
+def viewConfig (sampleCount : Nat) : ViewConfig Rat := ⟨axisConfig sampleCount, axisConfig sampleCount⟩
 
+/-- Until the tile manifest arrives the recording's length is unknown, so nothing is drawn. -/
 structure Model where
   mode : Decimation := .guaranteed
   column : Int := 0
-  view : View Rat := ⟨axisConfig.home, axisConfig.home⟩
+  manifest : Option Manifest := none
+  failure : Option String := none
+  view : View Rat := ⟨⟨0, 0⟩, ⟨0, 0⟩⟩
+
+def Model.sampleCount (m : Model) : Nat := (m.manifest.map (·.samples 0)).getD 0
 
 inductive Msg
+  | manifest (result : Except Http.Error String)
   | toggle
   | pick (column : Int)
   | zoomIn
@@ -32,20 +37,30 @@ inductive Msg
   | panLeft
   | panRight
 
-def stations : Array Seismic.Station :=
-  #[⟨1, [(900, 1300)]⟩, ⟨2, [(2000, 2600)]⟩, ⟨3, []⟩, ⟨4, [(300, 500), (3000, 3500)]⟩]
-
 def quakes : Array Seismic.Quake := #[⟨100, 3⟩, ⟨1000, 5⟩, ⟨2048, 4⟩, ⟨2049, 6⟩, ⟨3700, 7⟩]
 
 def series : List Inkproof.Scene.Pt := Series.samples 200 20
 
-def update : Msg → Model → Model
-  | .toggle, m => { m with mode := m.mode.toggle }
-  | .pick c, m => { m with column := c }
-  | .zoomIn, m => { m with view := View.step viewConfig m.view (.key .zoomIn) }
-  | .zoomOut, m => { m with view := View.step viewConfig m.view (.key .zoomOut) }
-  | .panLeft, m => { m with view := View.step viewConfig m.view (.key .left) }
-  | .panRight, m => { m with view := View.step viewConfig m.view (.key .right) }
+def manifestUrl : String := "tiles/manifest.json"
+
+def update : Msg → Model → Model × Cmd Msg
+  | .manifest (.ok body), m =>
+    match Manifest.parse body with
+    | some mf =>
+      let cfg := axisConfig (mf.samples 0)
+      ({ m with manifest := some mf, view := ⟨cfg.home, cfg.home⟩ }, .none)
+    | none =>
+      ({ m with failure := some s!"{manifestUrl} is not a tile manifest" },
+        .io fun _ => log .warn "manifest is not a tile manifest" [("url", manifestUrl)])
+  | .manifest (.error e), m =>
+    ({ m with failure := some s!"{manifestUrl}: {e}" },
+      .io fun _ => log .warn "manifest fetch failed" [("url", manifestUrl), ("error", toString e)])
+  | .toggle, m => ({ m with mode := m.mode.toggle }, .none)
+  | .pick c, m => ({ m with column := c }, .none)
+  | .zoomIn, m => ({ m with view := View.step (viewConfig m.sampleCount) m.view (.key .zoomIn) }, .none)
+  | .zoomOut, m => ({ m with view := View.step (viewConfig m.sampleCount) m.view (.key .zoomOut) }, .none)
+  | .panLeft, m => ({ m with view := View.step (viewConfig m.sampleCount) m.view (.key .left) }, .none)
+  | .panRight, m => ({ m with view := View.step (viewConfig m.sampleCount) m.view (.key .right) }, .none)
 
 def modeName : Decimation → String
   | .guaranteed => "guaranteed"
@@ -54,8 +69,6 @@ def modeName : Decimation → String
 def tracePaint : Inkproof.Scene.Paint := ⟨0, ⟨70, 130, 180, 255⟩⟩
 
 def quakeStyle : Inkproof.Scene.ScatterStyle := ⟨⟨1, ⟨220, 20, 60, 255⟩⟩, .circle, 4⟩
-
-def topLevel : Nat := 12
 
 abbrev TileCache := IO.Ref (Std.HashMap (Nat × Nat × Nat) (Array Seismic.Extent))
 
@@ -75,8 +88,8 @@ def loadTile (cache : TileCache) (s k j : Nat) : Lasm.JS.Async (Array Seismic.Ex
   cache.modify (·.insert key t)
   return t
 
-def stationQuery (cache : TileCache) (s : Nat) (r : Range) : Lasm.JS.Async (Nat → Nat → Seismic.Extent) := do
-  let k := TileRead.readLevel topLevel (r.hi - r.lo) chartCols
+def stationQuery (cache : TileCache) (mf : Manifest) (s : Nat) (r : Range) : Lasm.JS.Async (Nat → Nat → Seismic.Extent) := do
+  let k := TileRead.readLevel (mf.top s) (r.hi - r.lo) chartCols
   let (a, b) := TileRead.nodeRange k r.lo r.hi
   let (j0, j1) := TileRead.tileRange a b
   let mut tiles : Array (Array Seismic.Extent) := #[]
@@ -84,19 +97,35 @@ def stationQuery (cache : TileCache) (s : Nat) (r : Range) : Lasm.JS.Async (Nat 
     tiles := tiles.push (← loadTile cache s k j)
   return Loaded.levelQuery k (Loaded.nodeOf fun j => tiles.getD (j - j0) #[])
 
-def sceneOf (cache : TileCache) (src : String) : Lasm.JS.Async Scene := do
+def loadManifest (ref : IO.Ref (Option Manifest)) : Lasm.JS.Async Manifest := do
+  if let some mf := (← ref.get) then return mf
+  let resp ← try Lasm.JS.Web.fetch (.usvString manifestUrl) catch e =>
+    log .warn "manifest fetch failed" [("url", manifestUrl), ("error", toString e)]
+    throw e
+  unless ← resp.ok do
+    log .warn "manifest fetch failed" [("url", manifestUrl), ("status", toString (← resp.status))]
+    throw (IO.userError s!"{manifestUrl} not available")
+  let some mf := Manifest.parse (← resp.text) | do
+    log .warn "manifest is not a tile manifest" [("url", manifestUrl)]
+    throw (IO.userError s!"{manifestUrl} is malformed")
+  ref.set (some mf)
+  return mf
+
+def sceneOf (manifest : IO.Ref (Option Manifest)) (cache : TileCache) (src : String) : Lasm.JS.Async Scene := do
   let some r := Plot.parseSrc src | throw (IO.userError s!"not a sample range: {src}")
+  let mf ← loadManifest manifest
+  let stations := mf.stations.size
   let mut qs := #[]
   let mut labels : Array Label := #[]
-  for s in [0:stations.size] do
+  for s in [0:stations] do
     try
-      qs := qs.push (← stationQuery cache s r)
+      qs := qs.push (← stationQuery cache mf s r)
     catch _ =>
       -- The failure is already logged; an empty track would read as an outage, so say what happened.
       qs := qs.push fun _ _ => (⟨none⟩, ⟨none⟩)
-      labels := labels.push { text := s!"station {s + 1}: tiles failed to load", x := 8, y := 14 + Float.ofNat (s * chartHeight / stations.size), color := "#b00020" }
+      labels := labels.push { text := s!"station {s + 1}: tiles failed to load", x := 8, y := 14 + Float.ofNat (s * chartHeight / stations), color := "#b00020" }
   let list := Plot.traces tracePaint qs r chartCols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
-  return { commands := Draw.bytes 0xffffffff chartCols (trackHeight * stations.size) list, labels }
+  return { commands := Draw.bytes 0xffffffff chartCols (trackHeight * stations) list, labels }
 
 def linkedCharts : Nat := 8
 
@@ -111,14 +140,16 @@ def errorBound (r : Range) : String :=
 
 def view (m : Model) : Html Msg :=
   let reading := inspect series m.column
+  let sampleCount := m.sampleCount
   main_ [] [
+    p [attr "id" "status"] [.text (m.failure.getD (if m.manifest.isSome then "" else "Loading tiles"))],
     div [] [
       button [onClick .zoomIn, attr "id" "zoom-in"] [.text "Zoom in"],
       button [onClick .zoomOut, attr "id" "zoom-out"] [.text "Zoom out"],
       button [onClick .panLeft, attr "id" "pan-left"] [.text "Left"],
       button [onClick .panRight, attr "id" "pan-right"] [.text "Right"],
       span [attr "id" "range"] [.text s!"samples {(Range.ofInterval sampleCount m.view.x).lo} to {(Range.ofInterval sampleCount m.view.x).hi}"]],
-    div [attr "id" "charts"] ((List.range linkedCharts).map (stacked (Range.ofInterval sampleCount m.view.x))),
+    div [attr "id" "charts"] (if m.manifest.isSome then (List.range linkedCharts).map (stacked (Range.ofInterval sampleCount m.view.x)) else []),
     p [attr "id" "error-bound"] [.text (errorBound (Range.ofInterval sampleCount m.view.x))],
     button [onClick .toggle, attr "id" "toggle"] [.text s!"Decimation: {modeName m.mode}"],
     Svg.svg [attr "id" "chart", attr "viewBox" "0 0 200 100", attr "width" "800", attr "height" "400"]
@@ -130,6 +161,7 @@ def view (m : Model) : Html Msg :=
 
 def main : IO Unit := do
   let cache ← IO.mkRef {}
-  register "inkproof-chart" (sceneOf cache)
-  let app : App Unit Model Msg := App.sandbox {} update view
+  let manifest ← IO.mkRef none
+  register "inkproof-chart" (sceneOf manifest cache)
+  let app : App Unit Model Msg := App.element (fun _ => ({}, Http.get manifestUrl .manifest)) update view
   App.run app

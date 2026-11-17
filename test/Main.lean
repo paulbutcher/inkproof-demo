@@ -235,6 +235,18 @@ private def loadedTest : Except String Unit := do
       if (lo % 2 ^ k == 0 && hi % 2 ^ k == 0) then
         check (got == exact) s!"level {k}, samples {lo} to {hi}: aligned reads are exact"
 
+private def manifestTest : Except String Unit := do
+  let st : Seismic.Station := { seed := 5, outages := [(300, 700)] }
+  let ps := #[st.pyramid 2048, st.pyramid 1000]
+  let some m := Manifest.parse (Tiles.manifest ps) | throw "the tile build's manifest is not read"
+  check (m.firstLevel == 0 && m.stations.size == 2) "first level and stations are read"
+  for (p, s) in ps.toList.zipIdx do
+    check (m.stations[s]? == some (p.levels.map (·.size))) s!"station {s}: level sizes are read"
+    check (m.top s == p.levels.size - 1) s!"station {s}: top level"
+    check (m.samples s ≥ (p.levels[0]?.map (·.size)).getD 0) s!"station {s}: samples cover the leaves"
+  check (Manifest.parse "{\"tileSize\":256}" == none) "a manifest with no stations is refused"
+  check (Manifest.parse "not json" == none) "text that is not JSON is refused"
+
 private def drawTest : Except String Unit := do
   let style : Inkproof.Scene.ScatterStyle := ⟨⟨1, ⟨200, 30, 30, 255⟩⟩, .circle, 4⟩
   let proj : Inkproof.Scene.Projection Nat Nat := ⟨fun t => (t : Rat) / 10, fun m => 100 - (m : Rat) * 5⟩
@@ -340,5 +352,5 @@ private def rawTest : Except String Unit := do
 def main (args : List String) : IO UInt32 := do
   let real ← IO.FS.readBinFile "fixtures/IU.ANMO.00.HHZ.excerpt.mseed"
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"loaded tiles", loadedTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"loaded tiles", loadedTest⟩, ⟨"manifest", manifestTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩,
     platformTest (args.contains "--expect-wasm")]

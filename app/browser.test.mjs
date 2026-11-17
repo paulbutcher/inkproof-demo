@@ -175,7 +175,7 @@ test('a tile that fails to load is labelled and logged at warn, not drawn as an 
   const page = await browser.newPage();
   const warnings = [];
   page.on('console', m => { if (m.type() === 'warning') warnings.push(m.text()); });
-  await page.route('**/tiles/**', route => route.abort());
+  await page.route('**/tiles/**/t*.bin', route => route.abort());
   await page.addInitScript(() => {
     window.draws = 0;
     document.addEventListener('inkproof-draw', () => { window.draws += 1; });

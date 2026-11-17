@@ -95,6 +95,15 @@ theorem Inkproof.Demo.Loaded.nodeOf_eq : ∀ (tile : Nat → Array Inkproof.Demo
 def Inkproof.Demo.Loaded.tileNodes : ByteArray → Option (Array Inkproof.Demo.Seismic.Extent)
 theorem Inkproof.Demo.Loaded.tileNodes_eq : ∀ (bs : ByteArray) (ns : Array Inkproof.Demo.Seismic.Extent), Inkproof.Demo.Loaded.tileNodes bs = Option.some ns → ns = Array.filterMap (Inkproof.Demo.Loaded.fileNode bs) (Array.range (bs.size / 4)) ∧ ns.size = bs.size / 4
 theorem Inkproof.Demo.Loaded.tileNodes_ragged : ∀ (bs : ByteArray), bs.size % 4 ≠ 0 → Inkproof.Demo.Loaded.tileNodes bs = Option.none
+structure Inkproof.Demo.Manifest : Type
+field Inkproof.Demo.Manifest.firstLevel : Inkproof.Demo.Manifest → Nat
+constructor Inkproof.Demo.Manifest.mk : Nat → Array (Array Nat) → Inkproof.Demo.Manifest
+def Inkproof.Demo.Manifest.parse : String → Option Inkproof.Demo.Manifest
+def Inkproof.Demo.Manifest.samples : Inkproof.Demo.Manifest → Nat → Nat
+theorem Inkproof.Demo.Manifest.samples_eq : ∀ (m : Inkproof.Demo.Manifest) (s : Nat), m.samples s = (m.stations.getD s #[]).getD 0 0 * 2 ^ m.firstLevel
+field Inkproof.Demo.Manifest.stations : Inkproof.Demo.Manifest → Array (Array Nat)
+def Inkproof.Demo.Manifest.top : Inkproof.Demo.Manifest → Nat → Nat
+theorem Inkproof.Demo.Manifest.top_eq : ∀ (m : Inkproof.Demo.Manifest) (s : Nat), m.top s = m.firstLevel + ((m.stations.getD s #[]).size - 1)
 structure Inkproof.Demo.MiniSeed.Record : Type
 field Inkproof.Demo.MiniSeed.Record.day : Inkproof.Demo.MiniSeed.Record → Nat
 field Inkproof.Demo.MiniSeed.Record.factor : Inkproof.Demo.MiniSeed.Record → Int
@@ -296,7 +305,11 @@ def Inkproof.Demo.codeFiles : Array (String × String × String) → Array Inkpr
 def Inkproof.Demo.declares : String → String → Bool
 def Inkproof.Demo.escapeHtml : String → String
 def Inkproof.Demo.githubUrl : String → String → String
+instance Inkproof.Demo.instBEqManifest : BEq Inkproof.Demo.Manifest
+def Inkproof.Demo.instBEqManifest.beq : Inkproof.Demo.Manifest → Inkproof.Demo.Manifest → Bool
 instance Inkproof.Demo.instDecidableEqCodeKind : DecidableEq Inkproof.Demo.CodeKind
+instance Inkproof.Demo.instReprManifest : Repr Inkproof.Demo.Manifest
+def Inkproof.Demo.instReprManifest.repr : Inkproof.Demo.Manifest → Nat → Std.Format
 def Inkproof.Demo.lineCount : String → Nat
 def Inkproof.Demo.locate : Array (String × String) → String → Option (String × Option Nat)
 def Inkproof.Demo.parseTheorem : String → Option (String × String)
