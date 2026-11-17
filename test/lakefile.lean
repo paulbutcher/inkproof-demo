@@ -26,9 +26,11 @@ script test do
   let code ← driver.wait
   if code != 0 then return code
   let app := __dir__ / ".." / "app"
-  unless ← (app / "node_modules" / "playwright").pathExists do
-    IO.eprintln "::warning::Browser tests skipped: run `npm ci` in app/"
-    return 0
+  for dir in #[__dir__ / "..", app] do
+    let install ← IO.Process.spawn
+      { cmd := "npm", args := #["ci", "--no-fund", "--no-audit"], cwd := dir }
+    let code ← install.wait
+    if code != 0 then return code
   let tiles ← IO.Process.spawn
     { cmd := "lake", args := #["exe", "build-tiles", (app / "web" / "public" / "tiles").toString], cwd := __dir__ / ".." }
   let code ← tiles.wait

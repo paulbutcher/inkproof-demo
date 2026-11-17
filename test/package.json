@@ -1,0 +1,10 @@
+{
+  "name": "inkproof-demo-test",
+  "private": true,
+  "description": "Pins Lasm for the native-and-Lasm test run.",
+  "type": "module",
+  "devDependencies": {
+    "@lasm/cli": "0.8.0"
+  },
+  "engines": { "node": ">=24.0.0" }
+}

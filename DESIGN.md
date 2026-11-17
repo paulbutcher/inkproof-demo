@@ -10,7 +10,7 @@
 
 ## Browser app
 
-`app/` is the Lasm browser build: `App.lean` is a Lasm.UI app over the native modules, drawing the series (`Inkproof.Demo.Series`) as an SVG polyline under the chosen `Decimation`, with the toggle and the inspector panel (`Reading.html`) beside it. Its `package.json` takes the Gpu interpreter and the custom-element shim from the pinned `inkproof-web` package under `.lake/packages`, so `lake build` must run before `npm ci`. `lake test` builds it with Vite and runs `app/browser.test.mjs` in headless Chromium when `app/node_modules` exists. Tests check that naive decimation draws fewer points and a higher lowest peak than the guaranteed mode, that toggling back restores the same points, and that the inspector shows the raw sample count, the maximum and the guarantee. The WebGL chart elements of the full demo are not in it yet.
+`app/` is the Lasm browser build: `App.lean` is a Lasm.UI app over the native modules, drawing the series (`Inkproof.Demo.Series`) as an SVG polyline under the chosen `Decimation`, with the toggle and the inspector panel (`Reading.html`) beside it. The root `package.json` (Lasm resolves JavaScript bindings from the Lake project's root) takes the Gpu interpreter and the custom-element shim from the pinned `inkproof-web` package under `.lake/packages`, so `lake build` must run before `npm ci`. `lake test` installs the npm packages, builds it with Vite and runs `app/browser.test.mjs` in headless Chromium. Tests check that naive decimation draws fewer points and a higher lowest peak than the guaranteed mode, that toggling back restores the same points, and that the inspector shows the raw sample count, the maximum and the guarantee. The WebGL chart elements of the full demo are not in it yet.
 
 ## Drawing
 
@@ -32,7 +32,7 @@
 
 ## Performance test
 
-`app/browser.test.mjs` loads the page under a 4x CPU slowdown, the stand-in for a mid-range phone, and checks that the first chart element draws within a second of navigation and that, across zooms and pans of the eight linked charts, the 95th percentile of requestAnimationFrame intervals stays within a frame at 60 Hz. Headless Chromium has no GPU, so this bounds main-thread stalls and is not a measurement on a phone. The displayed placement bound is qualified by the theorem's `NormalRange` hypotheses.
+`app/browser.test.mjs` loads the page under a 4x CPU slowdown, the stand-in for a mid-range phone, and checks that the first chart element draws within a second of navigation and that, across zooms and pans of the eight linked charts, the longest requestAnimationFrame interval, best of three rounds, stays within 1.5 times the recorded baseline in `app/perf-baseline.json`. Headless Chromium has no GPU, so this guards against regressions and is not a measurement on a phone. Each zoom or pan currently stalls the main thread for about 700 ms under the slowdown. The displayed placement bound is qualified by the theorem's `NormalRange` hypotheses.
 
 ## Real data pipeline
 

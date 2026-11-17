@@ -5,6 +5,7 @@
 
 # Deployment settings for the agents; never part of the library.
 .env
+/node_modules/
 /app/node_modules/
 /app/dist/
 /app/web/public/tiles/
