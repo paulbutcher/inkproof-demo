@@ -9,7 +9,6 @@ import Inkproof.Demo.Page
 import Inkproof.Demo.Plot
 import Inkproof.Demo.Draw
 import Inkproof.Demo.Inspect
-import Inkproof.Demo.Robot
 import Inkproof.Demo.Seismic
 import Inkproof.Demo.Stack
 import Inkproof.Demo.Tiles
