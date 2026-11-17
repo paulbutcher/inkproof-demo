@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.4.0
+
+- Tiles are read with Web's queryColumnsFrom and TileCache, and the finest zooms from raw day files by byte range.
+- The four-station quarter is pinned.
+
 ## v0.3.0
 
 - The chart's commands come from Gpu's frame.
