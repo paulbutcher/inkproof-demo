@@ -10,39 +10,27 @@ namespace Inkproof.Demo.Plot
 
 open Inkproof.Core Inkproof.Scene Inkproof.Demo.Seismic Inkproof.Demo.View
 
-/-- The envelope column of one pixel column of a station drawn in the track starting at pixel row `y0`: the highest value is the top edge. -/
-def column (y0 height top : Nat) (x : Nat) (v : Int × Int) : Column where
-  x := (x : Rat) + 1 / 2
-  lo := y0 + Stack.pixelY height top v.2
-  hi := y0 + Stack.pixelY height top v.1
+/-- The projection of a track starting at pixel row `y0`: pixel column `x` is centred at `x + 1/2`, and the highest value is the top edge. -/
+def projection (y0 height top : Nat) : Projection Nat Int where
+  x := fun x => (x : Rat) + 1 / 2
+  y := fun v => y0 + Stack.pixelY height top v
 
-theorem column_eq (y0 height top x : Nat) (v : Int × Int) :
-    column y0 height top x v =
-      ⟨(x : Rat) + 1 / 2, y0 + Stack.pixelY height top v.2, y0 + Stack.pixelY height top v.1⟩ := rfl
+theorem projection_x (y0 height top : Nat) (x : Nat) : (projection y0 height top).x x = (x : Rat) + 1 / 2 := rfl
 
-/-- The items of one station's envelope, a `gap` wherever the station recorded nothing for at least one pixel column. -/
-def items (y0 height top : Nat) (g : Segmented Nat (Int × Int)) : List (Item Column) :=
-  List.intercalate [Item.gap] <| g.segments.toList.map fun seg =>
-    seg.points.toList.filterMap fun (x, v) => v.map fun v => Item.val (column y0 height top x v)
+theorem projection_y (y0 height top : Nat) (v : Int) :
+    (projection y0 height top).y v = y0 + Stack.pixelY height top v := rfl
 
-theorem items_eq (y0 height top : Nat) (g : Segmented Nat (Int × Int)) :
-    items y0 height top g = List.intercalate [Item.gap] (g.segments.toList.map fun seg =>
-      seg.points.toList.filterMap fun (x, v) => v.map fun v => Item.val (column y0 height top x v)) := rfl
-
-/-- The stacked stations over samples `r` in `cols` pixel columns, each track `height` pixels tall. -/
+/-- The stacked stations over samples `r` in `cols` pixel columns, each track `height` pixels tall, a gap wherever a station recorded nothing for at least one pixel column. -/
 def traces (paint : Paint) (qs : Array (Nat → Nat → Extent)) (r : Range) (cols height top : Nat) : DisplayList :=
-  qs.zipIdx.map fun (q, i) =>
-    ⟨paint.layer, paint.color, .envelope (items (i * height) height top (Stack.drawn q r.lo r.hi cols))⟩
+  qs.zipIdx.flatMap fun (q, i) =>
+    compileEnvelope paint (projection (i * height) height top) ((Stack.columns q r.lo r.hi cols).map Stack.span)
 
-theorem size_traces (paint : Paint) (qs : Array (Nat → Nat → Extent)) (r : Range) (cols height top : Nat) :
-    (traces paint qs r cols height top).size = qs.size := by
-  simp [traces]
-
-theorem traces_getElem (paint : Paint) (qs : Array (Nat → Nat → Extent)) (r : Range) (cols height top i : Nat)
-    (h : i < (traces paint qs r cols height top).size) :
-    (traces paint qs r cols height top)[i] =
-      ⟨paint.layer, paint.color, .envelope (items (i * height) height top
-        (Stack.drawn (qs[i]'(by simpa [size_traces] using h)) r.lo r.hi cols))⟩ := by
+theorem mem_traces (paint : Paint) (qs : Array (Nat → Nat → Extent)) (r : Range) (cols height top : Nat)
+    (c : Command) :
+    c ∈ traces paint qs r cols height top ↔
+      ∃ q i, (q, i) ∈ qs.zipIdx ∧
+        c ∈ compileEnvelope paint (projection (i * height) height top)
+          ((Stack.columns q r.lo r.hi cols).map Stack.span) := by
   simp [traces]
 
 /-- The pixel columns of `cols` across the samples `r`, the sample `t` falling in column `(bins r cols).col t`. -/

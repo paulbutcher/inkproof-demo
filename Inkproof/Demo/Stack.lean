@@ -2,8 +2,6 @@
 Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Inkproof.Core.Proofs.Segmented
-import Inkproof.Core.Proofs.Series
 import Inkproof.Demo.Seismic
 
 namespace Inkproof.Demo.Stack
@@ -35,84 +33,5 @@ theorem span_eq_some (e : Extent) (a b : Int) : span e = some (a, b) ↔ e.1.get
 
 /-- The pixel y of value `v` in a drawing `height` tall for values within `top` of zero. -/
 def pixelY (height top : Nat) (v : Int) : Int := (height : Int) / 2 - v * height / (2 * top)
-
-/-- The corners of a run of columns, each with its pixel x: along the highest values, then back along the lowest. -/
-def outlinePoints (height top : Nat) (run : List ((Int × Int) × Nat)) : List (Nat × Int) :=
-  (run.map fun ((_, b), x) => (x, pixelY height top b)) ++ (run.reverse.map fun ((a, _), x) => (x, pixelY height top a))
-
-theorem mem_outlinePoints (height top : Nat) (run : List ((Int × Int) × Nat)) (q : Nat × Int) :
-    q ∈ outlinePoints height top run ↔
-      ∃ a b x, ((a, b), x) ∈ run ∧ (q = (x, pixelY height top b) ∨ q = (x, pixelY height top a)) := by
-  simp only [outlinePoints, List.mem_append, List.mem_map, List.mem_reverse]
-  constructor
-  · rintro (⟨⟨⟨a, b⟩, x⟩, h, rfl⟩ | ⟨⟨⟨a, b⟩, x⟩, h, rfl⟩)
-    · exact ⟨a, b, x, h, Or.inl rfl⟩
-    · exact ⟨a, b, x, h, Or.inr rfl⟩
-  · rintro ⟨a, b, x, h, rfl | rfl⟩
-    · exact Or.inl ⟨((a, b), x), h, rfl⟩
-    · exact Or.inr ⟨((a, b), x), h, rfl⟩
-
-theorem length_outlinePoints (height top : Nat) (run : List ((Int × Int) × Nat)) :
-    (outlinePoints height top run).length = 2 * run.length := by
-  simp [outlinePoints]; omega
-
-def outline (height top : Nat) (run : List ((Int × Int) × Nat)) : String :=
-  " ".intercalate ((outlinePoints height top run).map fun (x, y) => s!"{x},{y}")
-
-theorem outline_eq (height top : Nat) (run : List ((Int × Int) × Nat)) :
-    outline height top run = " ".intercalate ((outlinePoints height top run).map fun (x, y) => s!"{x},{y}") := rfl
-
-/-- The columns in which the station recorded something, each with its pixel x. -/
-def present (q : Nat → Nat → Extent) (lo hi cols : Nat) : Array (Nat × Option (Int × Int)) :=
-  ((columns q lo hi cols).zipIdx.filterMap fun (e, x) => (span e).map fun s => (x, some s))
-
-theorem mem_present (q : Nat → Nat → Extent) (lo hi cols x : Nat) (s : Int × Int) :
-    (x, some s) ∈ (present q lo hi cols).toList ↔
-      ∃ h : x < (columns q lo hi cols).size, span (columns q lo hi cols)[x] = some s := by
-  simp only [present, Array.toList_filterMap, List.mem_filterMap, Array.toList_zipIdx, List.mem_zipIdx_iff_getElem?]
-  constructor
-  · rintro ⟨⟨e, y⟩, h, h2⟩
-    simp only [Option.map_eq_some_iff, Prod.mk.injEq, Option.some.injEq] at h2
-    obtain ⟨t, ht, rfl, rfl⟩ := h2
-    have hx := (List.getElem?_eq_some_iff.mp h)
-    obtain ⟨hl, he⟩ := hx
-    simp at hl
-    exact ⟨hl, by simp at he; rw [he]; exact ht⟩
-  · rintro ⟨h, hs⟩
-    refine ⟨((columns q lo hi cols)[x], x), ?_, by simp [hs]⟩
-    simp [h]
-
-/-- The recorded columns divided wherever pixel columns were skipped, so an outage is always a break. -/
-def drawn (q : Nat → Nat → Extent) (lo hi cols : Nat) : Segmented Nat (Int × Int) :=
-  Segmented.splitWhere (Series.ofUnsorted (present q lo hi cols)) fun a b => a + 1 < b
-
-theorem mem_breaks_drawn (q : Nat → Nat → Extent) (lo hi cols b : Nat) :
-    b ∈ (drawn q lo hi cols).breaks ↔
-      ∃ h : 0 < b ∧ b < (Series.ofUnsorted (present q lo hi cols)).size,
-        (Series.ofUnsorted (present q lo hi cols)).xs[b - 1]'(by unfold Series.size at h; omega) + 1 <
-          (Series.ofUnsorted (present q lo hi cols)).xs[b]'h.2 := by
-  simp only [drawn]
-  rw [Segmented.mem_breaks_splitWhere]
-  simp
-
-/-- No recorded column is lost and none is added. -/
-theorem drawn_points_perm (q : Nat → Nat → Extent) (lo hi cols : Nat) :
-    (drawn q lo hi cols).series.points.toList.Perm (present q lo hi cols).toList :=
-  Series.ofUnsorted_perm
-
-/-- One outline for each stretch of a station's view in which it recorded something; outages leave gaps between them. -/
-def traces (q : Nat → Nat → Extent) (lo hi cols height top : Nat) : List String :=
-  (drawn q lo hi cols).segments.toList.map fun seg =>
-    outline height top (seg.points.toList.filterMap fun (x, v) => v.map (·, x))
-
-theorem getElem_traces (q : Nat → Nat → Extent) (lo hi cols height top i : Nat) (h : i < (traces q lo hi cols height top).length) :
-    (traces q lo hi cols height top)[i] =
-      outline height top (((drawn q lo hi cols).segments.toList[i]'(by simpa [traces] using h)).points.toList.filterMap
-        fun (x, v) => v.map (·, x)) := by
-  simp [traces]
-
-theorem length_traces (q : Nat → Nat → Extent) (lo hi cols height top : Nat) :
-    (traces q lo hi cols height top).length = (drawn q lo hi cols).numSegments := by
-  simp [traces, Segmented.segments]
 
 end Inkproof.Demo.Stack

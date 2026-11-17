@@ -13,8 +13,8 @@ The public modules under `Inkproof/Demo/`, by job:
 - Cut a station into tile files and a manifest, using Core's pyramid: `Tiles.stationTiles`, `Tiles.tileBytes`, `Tiles.manifest`, `Tiles.encodeNode`, `Tiles.rawBytes`.
 - Read tiles back into min/max extents for a pixel range: `TileRead.levelFor`, `TileRead.nodeRange`, `Loaded.tileNodes`, `Loaded.levelQuery`, `Manifest.parse`.
 - Parse and write the earthquake catalogue (USGS CSV to `catalogue.json`): `Catalogue.parseCsv`, `Catalogue.toJson`, `Catalogue.parseJson`.
-- Turn extents and quakes into chart items for a view range: `Plot.traces`, `Plot.quakes`, `Plot.bins`, `Plot.src`, `Stack.traces`, `Stack.outline`, `Seismic.markers`, `View.inView`.
-- Draw a display list to GPU commands or raw pixels: `Draw.bytes`, over Gpu's `frame`.
+- Turn extents and quakes into chart items for a view range: `Plot.traces`, `Plot.quakes`, `Plot.bins`, `Plot.src`, `Seismic.markers`, `View.inView`.
+- Draw a display list to GPU commands or raw pixels: `Draw.frame`, `Draw.tile`, `Draw.bytes`.
 - Compute the guaranteed pixel error bound shown in the app: `Bound.pixelError`.
 - Compare guaranteed and naive decimation and read a pixel column: `Inspect.inspect`, `Inspect.Decimation.apply`, `Series.points`.
 - Drive random pan and zoom against the linked-view invariants: `Robot.run`.
