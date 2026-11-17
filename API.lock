@@ -281,7 +281,7 @@ instance Inkproof.Demo.View.instDecidableEqRange : DecidableEq Inkproof.Demo.Vie
 def Inkproof.Demo.View.instDecidableEqRange.decEq : (x x_1 : Inkproof.Demo.View.Range) → Decidable (x = x_1)
 theorem Inkproof.Demo.View.mem_inView : ∀ (r : Inkproof.Demo.View.Range) (qs : Array Inkproof.Demo.Seismic.Quake) (q : Inkproof.Demo.Seismic.Quake), q ∈ Inkproof.Demo.View.inView r qs ↔ q ∈ qs ∧ r.lo ≤ q.time ∧ q.time < r.hi
 def Inkproof.Demo.codeFiles : Array (String × String × String) → Array Inkproof.Demo.CodeFile
-def Inkproof.Demo.declares : String → String → Bool
+def Inkproof.Demo.declarationLine : String → String → Option Nat
 def Inkproof.Demo.escapeHtml : String → String
 def Inkproof.Demo.githubUrl : String → String → String
 instance Inkproof.Demo.instBEqManifest : BEq Inkproof.Demo.Manifest

@@ -20,13 +20,19 @@ structure TheoremEntry where
   statement : String
   url : String
 
-/-- Whether the source `line` declares theorem `name`, written in full or relative to its namespaces. -/
-def declares (name : String) (line : String) : Bool :=
-  match line.splitOn "theorem " with
-  | _ :: rest@(_ :: _) =>
-    let token := (" ".intercalate rest).takeWhile fun c => !c.isWhitespace && c != ':'
-    token == name || name.endsWith ("." ++ token)
-  | _ => false
+/-- The namespaces open after a source line, given those open before it. -/
+private def namespacesAfter (line : String) (open_ : List String) : List String :=
+  match line.trimAscii.toString.splitOn " " with
+  | ["namespace", n] => open_ ++ n.splitOn "."
+  | ["end", n] => open_.take (open_.length - (n.splitOn ".").length)
+  | _ => open_
+
+/-- The 1-based line of the source text that declares theorem `name`, tracking the namespaces it is read inside. -/
+def declarationLine (text name : String) : Option Nat :=
+  let step := fun (st : List String × Option Nat × Nat) line =>
+    let (ns, found, i) := st
+    (namespacesAfter line ns, found <|> if InkproofTools.ApiLock.declaresInSourceAt line name ns then some i else none, i + 1)
+  ((text.splitOn "\n").foldl step ([], none, 1)).2.1
 
 /-- The file declaring theorem `name`, with the 1-based line, preferring the module named by its namespaces. A theorem with no declaration of its own, such as a structure field or an instance, gets the module its namespaces name, if there is one. -/
 def locate (sources : Array (String × String)) (name : String) : Option (String × Option Nat) :=
@@ -34,8 +40,7 @@ def locate (sources : Array (String × String)) (name : String) : Option (String
   let prefixes := ((List.range parts.length).map fun k => "/".intercalate (parts.take k) ++ ".lean").reverse
   let rank (path : String) : Nat := (prefixes.findIdx? (· == path)).getD prefixes.length
   let ordered := sources.qsort fun a b => rank a.1 < rank b.1
-  let declared := ordered.findSome? fun (path, text) =>
-    ((text.splitOn "\n").findIdx? (declares name)).map fun i => (path, some (i + 1))
+  let declared := ordered.findSome? fun (path, text) => (declarationLine text name).map fun i => (path, some i)
   declared <|> (ordered[0]?.bind fun (path, _) => if rank path < prefixes.length then some (path, none) else none)
 
 def githubUrl (repo tag : String) : String :=

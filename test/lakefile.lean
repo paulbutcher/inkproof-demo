@@ -13,7 +13,7 @@ package «inkproof-demo-test» where
   ]
 
 require «inkproof-demo» from ".."
-require «inkproof-tools» from git "https://github.com/paulbutcher/inkproof-tools" @ "v0.3.0"
+require «inkproof-tools» from git "https://github.com/paulbutcher/inkproof-tools" @ "v0.6.0"
 
 @[default_target]
 lean_exe tests where
