@@ -6,6 +6,7 @@ import Lasm.UI
 import Lasm.JS.Web.Fetch
 import Inkproof.Demo
 import Inkproof.Web.Host.Chart
+import Inkproof.Web.Host.Tiles
 
 open Lasm.UI Inkproof.Web.Host Inkproof.Demo Inkproof.Demo.Inspect Inkproof.Demo.View Inkproof.Viewport
 
@@ -76,13 +77,8 @@ def loadTile (cache : TileCache) (s k j : Nat) : Lasm.JS.Async (Array Seismic.Ex
   let key := (s, k, j)
   if let some t := (← cache.get)[key]? then return t
   let url := Tiles.tilePath s k j
-  let resp ← try Lasm.JS.Web.fetch (.usvString s!"tiles/{url}") catch e =>
-    log .warn "tile fetch failed" [("tile", url), ("error", toString e)]
-    throw e
-  unless ← resp.ok do
-    log .warn "tile fetch failed" [("tile", url), ("status", toString (← resp.status))]
-    throw (IO.userError s!"tile {url} not available")
-  let some t := Loaded.tileNodes (← resp.bytes) | do
+  let bytes ← fetchTile s!"tiles/{url}"
+  let some t := Loaded.tileNodes bytes | do
     log .warn "tile is not a whole number of valid nodes" [("tile", url)]
     throw (IO.userError s!"tile {url} is malformed")
   cache.modify (·.insert key t)

@@ -192,7 +192,7 @@ test('a tile that fails to load is labelled and logged at warn, not drawn as an 
     return n;
   });
   assert.ok(dark > 0, 'the failed track carries a label');
-  assert.ok(warnings.some(w => w.includes('tile fetch failed')), `warnings: ${warnings}`);
+  assert.ok(warnings.some(w => w.includes('fetching a tile failed') && w.includes('tiles/s')), `warnings: ${warnings}`);
   await page.close();
 });
 
