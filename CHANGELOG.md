@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.3.0
+
+- The chart's commands come from Gpu's frame.
+- The visible sample range comes from Viewport's Interval.indexRange.
+- Tiles are fetched with Web's Host.fetchTile.
+
 ## v0.2.0
 
 - Tiles are cut with Core's pyramid.
