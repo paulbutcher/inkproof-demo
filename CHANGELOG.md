@@ -5,6 +5,7 @@
 - The chart's commands come from Gpu's frame.
 - The visible sample range comes from Viewport's Interval.indexRange.
 - Tiles are fetched with Web's Host.fetchTile.
+- The theorem page and inspector read API.lock with inkproof-tools' reader.
 
 ## v0.2.0
 
