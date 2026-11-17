@@ -12,8 +12,8 @@ import Inkproof.Demo.Inspect
 import Inkproof.Demo.Seismic
 import Inkproof.Demo.Stack
 import Inkproof.Demo.Tiles
-import Inkproof.Demo.TileRead
 import Inkproof.Demo.Loaded
+import Inkproof.Demo.Raw
 import Inkproof.Demo.Manifest
 import Inkproof.Demo.Catalogue
 import Inkproof.Demo.View

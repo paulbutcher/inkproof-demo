@@ -3,6 +3,7 @@ Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Inkproof.Demo.Catalogue
+import Inkproof.Demo.Manifest
 import Inkproof.Demo.Tiles
 
 open Inkproof.Demo
@@ -16,12 +17,17 @@ def quakes : Array Seismic.Quake := #[⟨100, 30⟩, ⟨1000, 50⟩, ⟨2048, 40
 
 def main (args : List String) : IO UInt32 := do
   let [dir] := args | IO.eprintln "usage: build-tiles <output dir>"; return 1
-  let ps := stations.map (·.pyramid 4096)
+  let samples := 4096
+  let ps := stations.map (·.pyramid samples)
   for (p, s) in ps.toList.zipIdx do
     for (path, bytes) in Tiles.stationTiles s p do
       let file : System.FilePath := dir / path
       if let some parent := file.parent then IO.FS.createDirAll parent
       IO.FS.writeBinFile file bytes
-  IO.FS.writeFile (dir / "manifest.json") (Tiles.manifest ps)
+  for (st, s) in stations.toList.zipIdx do
+    IO.FS.createDirAll (dir / s!"s{s}/raw")
+    IO.FS.writeBinFile (dir / Tiles.rawPath s 0) (Tiles.rawBytes (st.samples samples))
+  let manifest : Manifest := ⟨0, ps.map (·.levels.map (·.size)), samples, 0, ps.map fun _ => #[0]⟩
+  IO.FS.writeFile (dir / "manifest.json") manifest.toJson
   IO.FS.writeFile (dir / "catalogue.json") (Catalogue.toJson quakes)
   return 0

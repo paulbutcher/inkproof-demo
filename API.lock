@@ -100,25 +100,27 @@ field Inkproof.Demo.Library.repo : Inkproof.Demo.Library → String
 field Inkproof.Demo.Library.sources : Inkproof.Demo.Library → Array (String × String)
 field Inkproof.Demo.Library.tag : Inkproof.Demo.Library → String
 def Inkproof.Demo.Library.theorems : Inkproof.Demo.Library → Array Inkproof.Demo.TheoremEntry
+def Inkproof.Demo.Loaded.decodeTile : ByteArray → Except String (Array Inkproof.Demo.Seismic.Extent)
+theorem Inkproof.Demo.Loaded.decodeTile_eq : ∀ (bs : ByteArray) (ns : Array Inkproof.Demo.Seismic.Extent), Inkproof.Demo.Loaded.decodeTile bs = Except.ok ns ↔ Inkproof.Demo.Loaded.tileNodes bs = Option.some ns
 def Inkproof.Demo.Loaded.fileNode : ByteArray → Nat → Option Inkproof.Demo.Seismic.Extent
-def Inkproof.Demo.Loaded.levelQuery : Nat → (Nat → Inkproof.Demo.Seismic.Extent) → Nat → Nat → Inkproof.Demo.Seismic.Extent
-theorem Inkproof.Demo.Loaded.levelQuery_eq : ∀ (level : Nat) (node : Nat → Inkproof.Demo.Seismic.Extent) (lo hi : Nat), Inkproof.Demo.Loaded.levelQuery level node lo hi = Inkproof.Core.Aggregate.fold node (Array.range' (lo / 2 ^ level) ((hi + 2 ^ level - 1) / 2 ^ level - lo / 2 ^ level))
 def Inkproof.Demo.Loaded.nodeExtent : Option (Option (Int × Int)) → Option Inkproof.Demo.Seismic.Extent
 theorem Inkproof.Demo.Loaded.nodeExtent_gap : Option.map Inkproof.Demo.Stack.span (Inkproof.Demo.Loaded.nodeExtent (Option.some Option.none)) = Option.some Option.none
 theorem Inkproof.Demo.Loaded.nodeExtent_invalid : Inkproof.Demo.Loaded.nodeExtent Option.none = Option.none
 theorem Inkproof.Demo.Loaded.nodeExtent_span : ∀ (a b : Int), Option.map Inkproof.Demo.Stack.span (Inkproof.Demo.Loaded.nodeExtent (Option.some (Option.some (a, b)))) = Option.some (Option.some (a, b))
-def Inkproof.Demo.Loaded.nodeOf : (Nat → Array Inkproof.Demo.Seismic.Extent) → Nat → Inkproof.Demo.Seismic.Extent
-theorem Inkproof.Demo.Loaded.nodeOf_eq : ∀ (tile : Nat → Array Inkproof.Demo.Seismic.Extent) (n : Nat), Inkproof.Demo.Loaded.nodeOf tile n = (tile (n / Inkproof.Demo.Tiles.tileSize)).getD (n % Inkproof.Demo.Tiles.tileSize) ({ get := Option.none }, { get := Option.none })
 def Inkproof.Demo.Loaded.tileNodes : ByteArray → Option (Array Inkproof.Demo.Seismic.Extent)
 theorem Inkproof.Demo.Loaded.tileNodes_eq : ∀ (bs : ByteArray) (ns : Array Inkproof.Demo.Seismic.Extent), Inkproof.Demo.Loaded.tileNodes bs = Option.some ns → ns = Array.filterMap (Inkproof.Demo.Loaded.fileNode bs) (Array.range (bs.size / 4)) ∧ ns.size = bs.size / 4
 theorem Inkproof.Demo.Loaded.tileNodes_ragged : ∀ (bs : ByteArray), bs.size % 4 ≠ 0 → Inkproof.Demo.Loaded.tileNodes bs = Option.none
 structure Inkproof.Demo.Manifest : Type
 field Inkproof.Demo.Manifest.firstLevel : Inkproof.Demo.Manifest → Nat
-constructor Inkproof.Demo.Manifest.mk : Nat → Array (Array Nat) → Inkproof.Demo.Manifest
+constructor Inkproof.Demo.Manifest.mk : Nat → Array (Array Nat) → Nat → Nat → Array (Array Nat) → Inkproof.Demo.Manifest
 def Inkproof.Demo.Manifest.parse : String → Option Inkproof.Demo.Manifest
+field Inkproof.Demo.Manifest.rawDays : Inkproof.Demo.Manifest → Array (Array Nat)
+field Inkproof.Demo.Manifest.rawFirst : Inkproof.Demo.Manifest → Nat
+field Inkproof.Demo.Manifest.rawSpan : Inkproof.Demo.Manifest → Nat
 def Inkproof.Demo.Manifest.samples : Inkproof.Demo.Manifest → Nat → Nat
 theorem Inkproof.Demo.Manifest.samples_eq : ∀ (m : Inkproof.Demo.Manifest) (s : Nat), m.samples s = (m.stations.getD s #[]).getD 0 0 * 2 ^ m.firstLevel
 field Inkproof.Demo.Manifest.stations : Inkproof.Demo.Manifest → Array (Array Nat)
+def Inkproof.Demo.Manifest.toJson : Inkproof.Demo.Manifest → String
 def Inkproof.Demo.Manifest.top : Inkproof.Demo.Manifest → Nat → Nat
 theorem Inkproof.Demo.Manifest.top_eq : ∀ (m : Inkproof.Demo.Manifest) (s : Nat), m.top s = m.firstLevel + ((m.stations.getD s #[]).size - 1)
 structure Inkproof.Demo.MiniSeed.Record : Type
@@ -175,7 +177,7 @@ def Inkproof.Demo.Place.startIndex : Nat → Nat → Inkproof.Demo.MiniSeed.Reco
 theorem Inkproof.Demo.Place.startIndex_same_day : ∀ (rate day : Nat) (r : Inkproof.Demo.MiniSeed.Record), r.day = day → Inkproof.Demo.Place.startIndex rate day r = r.tenthMs * rate / 10000
 def Inkproof.Demo.Plot.bins : Inkproof.Demo.View.Range → Nat → Inkproof.Core.Binning Nat
 theorem Inkproof.Demo.Plot.bins_columns : ∀ (r : Inkproof.Demo.View.Range) (cols : Nat), (Inkproof.Demo.Plot.bins r cols).columns = Max.max cols 1
-theorem Inkproof.Demo.Plot.mem_traces : ∀ (paint : Inkproof.Scene.Paint) (qs : Array (Nat → Nat → Inkproof.Demo.Seismic.Extent)) (r : Inkproof.Demo.View.Range) (cols height top : Nat) (c : Inkproof.Scene.Command), c ∈ Inkproof.Demo.Plot.traces paint qs r cols height top ↔ ∃ q i, (q, i) ∈ qs.zipIdx ∧ c ∈ Inkproof.Scene.compileEnvelope paint (Inkproof.Demo.Plot.projection (i * height) height top) (Array.map Inkproof.Demo.Stack.span (Inkproof.Demo.Stack.columns q r.lo r.hi cols))
+theorem Inkproof.Demo.Plot.mem_traces : ∀ (paint : Inkproof.Scene.Paint) (columns : Array (Array Inkproof.Demo.Seismic.Extent)) (height top : Nat) (c : Inkproof.Scene.Command), c ∈ Inkproof.Demo.Plot.traces paint columns height top ↔ ∃ cs i, (cs, i) ∈ columns.zipIdx ∧ c ∈ Inkproof.Scene.compileEnvelope paint (Inkproof.Demo.Plot.projection (i * height) height top) (Array.map Inkproof.Demo.Stack.span cs)
 def Inkproof.Demo.Plot.parseSrc : String → Option Inkproof.Demo.View.Range
 def Inkproof.Demo.Plot.projection : Nat → Nat → Nat → Inkproof.Scene.Projection Nat Int
 theorem Inkproof.Demo.Plot.projection_x : ∀ (y0 height top x : Nat), (Inkproof.Demo.Plot.projection y0 height top).x x = ↑x + 1 / 2
@@ -185,7 +187,29 @@ theorem Inkproof.Demo.Plot.quakes_getElem : ∀ (style : Inkproof.Scene.ScatterS
 theorem Inkproof.Demo.Plot.size_quakes : ∀ (style : Inkproof.Scene.ScatterStyle) (qs : Array Inkproof.Demo.Seismic.Quake) (r : Inkproof.Demo.View.Range) (cols : Nat), Array.size (Inkproof.Demo.Plot.quakes style qs r cols) = (Inkproof.Demo.View.inView r qs).size
 def Inkproof.Demo.Plot.src : Inkproof.Demo.View.Range → String
 theorem Inkproof.Demo.Plot.src_eq : ∀ (r : Inkproof.Demo.View.Range), Inkproof.Demo.Plot.src r = ToString.toString r.lo ++ ToString.toString "-" ++ ToString.toString r.hi
-def Inkproof.Demo.Plot.traces : Inkproof.Scene.Paint → Array (Nat → Nat → Inkproof.Demo.Seismic.Extent) → Inkproof.Demo.View.Range → Nat → Nat → Nat → Inkproof.Scene.DisplayList
+def Inkproof.Demo.Plot.traces : Inkproof.Scene.Paint → Array (Array Inkproof.Demo.Seismic.Extent) → Nat → Nat → Inkproof.Scene.DisplayList
+structure Inkproof.Demo.Raw.Piece : Type
+field Inkproof.Demo.Raw.Piece.first : Inkproof.Demo.Raw.Piece → Nat
+field Inkproof.Demo.Raw.Piece.len : Inkproof.Demo.Raw.Piece → Nat
+constructor Inkproof.Demo.Raw.Piece.mk : String → Nat → Nat → Nat → Inkproof.Demo.Raw.Piece
+field Inkproof.Demo.Raw.Piece.path : Inkproof.Demo.Raw.Piece → String
+field Inkproof.Demo.Raw.Piece.start : Inkproof.Demo.Raw.Piece → Nat
+def Inkproof.Demo.Raw.decodeLeaves : ByteArray → Except String (Array Inkproof.Demo.Seismic.Extent)
+theorem Inkproof.Demo.Raw.decodeLeaves_ragged : ∀ (bs : ByteArray), bs.size % 2 ≠ 0 → ∃ e, Inkproof.Demo.Raw.decodeLeaves bs = Except.error e
+theorem Inkproof.Demo.Raw.getElem_decodeLeaves : ∀ (bs : ByteArray) (a : Array Inkproof.Demo.Seismic.Extent), Inkproof.Demo.Raw.decodeLeaves bs = Except.ok a → ∀ (i : Nat) (hi : i < a.size), a[i] = Inkproof.Demo.Raw.wordExtent ((bs.data.getD (2 * i) 0).toNat + 256 * (bs.data.getD (2 * i + 1) 0).toNat)
+instance Inkproof.Demo.Raw.instBEqPiece : BEq Inkproof.Demo.Raw.Piece
+def Inkproof.Demo.Raw.instBEqPiece.beq : Inkproof.Demo.Raw.Piece → Inkproof.Demo.Raw.Piece → Bool
+instance Inkproof.Demo.Raw.instReprPiece : Repr Inkproof.Demo.Raw.Piece
+def Inkproof.Demo.Raw.instReprPiece.repr : Inkproof.Demo.Raw.Piece → Nat → Std.Format
+theorem Inkproof.Demo.Raw.mem_pieces : ∀ (s span first0 : Nat) (days : Array Nat) (lo hi : Nat) (p : Inkproof.Demo.Raw.Piece), p ∈ Inkproof.Demo.Raw.pieces s span first0 days lo hi ↔ ∃ d, d ∈ days ∧ Inkproof.Demo.Raw.piece s span first0 lo hi d = Option.some p
+def Inkproof.Demo.Raw.piece : Nat → Nat → Nat → Nat → Nat → Nat → Option Inkproof.Demo.Raw.Piece
+theorem Inkproof.Demo.Raw.piece_covers : ∀ (s span first0 lo hi d i : Nat), lo ≤ i → i < hi → (d - first0) * span ≤ i → i < (d - first0) * span + span → ∃ p, Inkproof.Demo.Raw.piece s span first0 lo hi d = Option.some p ∧ p.first ≤ i ∧ i < p.first + p.len / 2
+theorem Inkproof.Demo.Raw.piece_spec : ∀ (s span first0 lo hi d : Nat) (p : Inkproof.Demo.Raw.Piece), Inkproof.Demo.Raw.piece s span first0 lo hi d = Option.some p → p.path = Inkproof.Demo.Tiles.rawPath s d ∧ lo ≤ p.first ∧ p.first + p.len / 2 ≤ hi ∧ p.len % 2 = 0 ∧ p.first ≥ (d - first0) * span ∧ p.first + p.len / 2 ≤ (d - first0) * span + span ∧ p.start = 2 * (p.first - (d - first0) * span) ∧ 0 < p.len
+def Inkproof.Demo.Raw.pieces : Nat → Nat → Nat → Array Nat → Nat → Nat → Array Inkproof.Demo.Raw.Piece
+theorem Inkproof.Demo.Raw.size_decodeLeaves : ∀ (bs : ByteArray) (a : Array Inkproof.Demo.Seismic.Extent), Inkproof.Demo.Raw.decodeLeaves bs = Except.ok a → a.size = bs.size / 2
+def Inkproof.Demo.Raw.wordExtent : Nat → Inkproof.Demo.Seismic.Extent
+theorem Inkproof.Demo.Raw.wordExtent_encodeWord : ∀ (v : Int), -32768 < v → v < 32768 → Inkproof.Demo.Raw.wordExtent (Inkproof.Demo.Tiles.encodeWord v) = Inkproof.Demo.Seismic.extent (Option.some v)
+theorem Inkproof.Demo.Raw.wordExtent_gap : Inkproof.Demo.Raw.wordExtent (Inkproof.Demo.Tiles.encodeWord Inkproof.Demo.Tiles.gapWord) = ({ get := Option.none }, { get := Option.none })
 def Inkproof.Demo.Seismic.Extent : Type
 structure Inkproof.Demo.Seismic.Quake : Type
 field Inkproof.Demo.Seismic.Quake.magnitude : Inkproof.Demo.Seismic.Quake → Nat
@@ -211,9 +235,6 @@ def Inkproof.Demo.Series.points : Inkproof.Demo.Inspect.Decimation → List Inkp
 theorem Inkproof.Demo.Series.points_toList : ∀ (d : Inkproof.Demo.Inspect.Decimation) (xs : List Inkproof.Scene.Pt) (height top : Nat), (Inkproof.Demo.Series.points d xs height top).toList = [' '].intercalate (List.map String.toList (Inkproof.Demo.Series.coords d xs height top))
 def Inkproof.Demo.Series.samples : Nat → Nat → List Inkproof.Scene.Pt
 theorem Inkproof.Demo.Series.samples_length : ∀ (columns perColumn : Nat), (Inkproof.Demo.Series.samples columns perColumn).length = columns * perColumn
-def Inkproof.Demo.Stack.columns : (Nat → Nat → Inkproof.Demo.Seismic.Extent) → Nat → Nat → Nat → Array Inkproof.Demo.Seismic.Extent
-theorem Inkproof.Demo.Stack.columns_size : ∀ (q : Nat → Nat → Inkproof.Demo.Seismic.Extent) (lo hi cols : Nat), (Inkproof.Demo.Stack.columns q lo hi cols).size = cols
-theorem Inkproof.Demo.Stack.getElem_columns : ∀ (q : Nat → Nat → Inkproof.Demo.Seismic.Extent) (lo hi cols c : Nat) (h : c < (Inkproof.Demo.Stack.columns q lo hi cols).size), (Inkproof.Demo.Stack.columns q lo hi cols)[c] = q (lo + (hi - lo) * c / cols) (lo + (hi - lo) * (c + 1) / cols)
 def Inkproof.Demo.Stack.pixelY : Nat → Nat → Int → Int
 def Inkproof.Demo.Stack.span : Inkproof.Demo.Seismic.Extent → Option (Int × Int)
 theorem Inkproof.Demo.Stack.span_eq_some : ∀ (e : Inkproof.Demo.Seismic.Extent) (a b : Int), Inkproof.Demo.Stack.span e = Option.some (a, b) ↔ e.fst.get = Option.some a ∧ e.snd.get = Option.some b
@@ -229,19 +250,6 @@ constructor Inkproof.Demo.TheoremEntry.mk : String → String → String → Str
 field Inkproof.Demo.TheoremEntry.name : Inkproof.Demo.TheoremEntry → String
 field Inkproof.Demo.TheoremEntry.statement : Inkproof.Demo.TheoremEntry → String
 field Inkproof.Demo.TheoremEntry.url : Inkproof.Demo.TheoremEntry → String
-def Inkproof.Demo.TileRead.decodeTile : ByteArray → List (Option (Option (Int × Int)))
-theorem Inkproof.Demo.TileRead.getElem_decodeTile : ∀ (bs : ByteArray) (i : Nat) (h : i < (Inkproof.Demo.TileRead.decodeTile bs).length), (Inkproof.Demo.TileRead.decodeTile bs)[i] = Inkproof.Demo.Tiles.decodeNode (List.take 4 (List.drop (4 * i) bs.toList))
-theorem Inkproof.Demo.TileRead.length_decodeTile : ∀ (bs : ByteArray), (Inkproof.Demo.TileRead.decodeTile bs).length = bs.size / 4
-def Inkproof.Demo.TileRead.levelFor : Nat → Nat → Nat
-theorem Inkproof.Demo.TileRead.lt_pow_levelFor : ∀ (span cols : Nat), Max.max 1 (span / cols) < 2 ^ (Inkproof.Demo.TileRead.levelFor span cols + 1)
-def Inkproof.Demo.TileRead.nodeRange : Nat → Nat → Nat → Nat × Nat
-theorem Inkproof.Demo.TileRead.nodeRange_covers : ∀ (level lo hi i : Nat), lo ≤ i → i < hi → (Inkproof.Demo.TileRead.nodeRange level lo hi).fst ≤ i / 2 ^ level ∧ i / 2 ^ level < (Inkproof.Demo.TileRead.nodeRange level lo hi).snd
-theorem Inkproof.Demo.TileRead.pow_levelFor_le : ∀ (span cols : Nat), 2 ^ Inkproof.Demo.TileRead.levelFor span cols ≤ Max.max 1 (span / cols)
-def Inkproof.Demo.TileRead.readLevel : Nat → Nat → Nat → Nat
-theorem Inkproof.Demo.TileRead.readLevel_eq_of_le : ∀ {top span cols : Nat}, Inkproof.Demo.TileRead.levelFor span cols ≤ top → Inkproof.Demo.TileRead.readLevel top span cols = Inkproof.Demo.TileRead.levelFor span cols
-theorem Inkproof.Demo.TileRead.readLevel_eq_top_of_le : ∀ {top span cols : Nat}, top ≤ Inkproof.Demo.TileRead.levelFor span cols → Inkproof.Demo.TileRead.readLevel top span cols = top
-def Inkproof.Demo.TileRead.tileRange : Nat → Nat → Nat × Nat
-theorem Inkproof.Demo.TileRead.tileRange_covers : ∀ (a b j : Nat), a ≤ j → j < b → (Inkproof.Demo.TileRead.tileRange a b).fst ≤ j / Inkproof.Demo.Tiles.tileSize ∧ j / Inkproof.Demo.Tiles.tileSize < (Inkproof.Demo.TileRead.tileRange a b).snd
 def Inkproof.Demo.Tiles.decodeNode : List UInt8 → Option (Option (Int × Int))
 theorem Inkproof.Demo.Tiles.decodeNode_encodeNode : ∀ (e : Inkproof.Demo.Seismic.Extent) (a b : Int), Inkproof.Demo.Stack.span e = Option.some (a, b) → -32767 ≤ a → a < 32768 → -32768 ≤ b → b < 32768 → Inkproof.Demo.Tiles.decodeNode (Inkproof.Demo.Tiles.encodeNode e) = Option.some (Option.some (a, b))
 theorem Inkproof.Demo.Tiles.decodeNode_gap : ∀ (e : Inkproof.Demo.Seismic.Extent), Inkproof.Demo.Stack.span e = Option.none → Inkproof.Demo.Tiles.decodeNode (Inkproof.Demo.Tiles.encodeNode e) = Option.some Option.none
@@ -251,7 +259,6 @@ def Inkproof.Demo.Tiles.encodeNode : Inkproof.Demo.Seismic.Extent → List UInt8
 theorem Inkproof.Demo.Tiles.encodeNode_length : ∀ (e : Inkproof.Demo.Seismic.Extent), (Inkproof.Demo.Tiles.encodeNode e).length = 4
 def Inkproof.Demo.Tiles.encodeWord : Int → Nat
 def Inkproof.Demo.Tiles.gapWord : Int
-def Inkproof.Demo.Tiles.manifest : Array (Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent) → String
 def Inkproof.Demo.Tiles.manifestOfSizes : Nat → Array (Array Nat) → String
 def Inkproof.Demo.Tiles.rawBytes : Array (Option Int) → ByteArray
 theorem Inkproof.Demo.Tiles.rawBytes_data : ∀ (xs : Array (Option Int)), (Inkproof.Demo.Tiles.rawBytes xs).data.toList = List.flatMap Inkproof.Demo.Tiles.rawSample xs.toList

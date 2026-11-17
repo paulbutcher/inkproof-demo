@@ -10,17 +10,6 @@ variable {α : Type}
 
 open Inkproof.Core Inkproof.Demo.Seismic
 
-/-- The extent of each of `cols` equal pixel columns covering samples `lo` to `hi - 1`, read from the pyramid. -/
-def columns (q : Nat → Nat → Extent) (lo hi cols : Nat) : Array Extent :=
-  (Array.range cols).map fun c => q (lo + (hi - lo) * c / cols) (lo + (hi - lo) * (c + 1) / cols)
-
-theorem columns_size (q : Nat → Nat → Extent) (lo hi cols : Nat) : (columns q lo hi cols).size = cols := by
-  simp [columns]
-
-theorem getElem_columns (q : Nat → Nat → Extent) (lo hi cols c : Nat) (h : c < (columns q lo hi cols).size) :
-    (columns q lo hi cols)[c] = q (lo + (hi - lo) * c / cols) (lo + (hi - lo) * (c + 1) / cols) := by
-  simp [columns]
-
 /-- The lowest and highest value of a column, absent when the station recorded nothing in it. -/
 def span (e : Extent) : Option (Int × Int) :=
   match e.1.get, e.2.get with

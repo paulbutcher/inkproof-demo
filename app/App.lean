@@ -67,31 +67,20 @@ def modeName : Decimation → String
   | .guaranteed => "guaranteed"
   | .naive => "naive"
 
+/-- Enough for every tile one chart view reads from four stations, so linked charts and the next pan or zoom find them. -/
+def tileCacheCapacity : Nat := 512
+
 def tracePaint : Inkproof.Scene.Paint := ⟨0, ⟨70, 130, 180, 255⟩⟩
 
 def quakeStyle : Inkproof.Scene.ScatterStyle := ⟨⟨1, ⟨220, 20, 60, 255⟩⟩, .circle, 4⟩
 
-abbrev TileCache := IO.Ref (Std.HashMap (Nat × Nat × Nat) (Array Seismic.Extent))
-
-def loadTile (cache : TileCache) (s k j : Nat) : Lasm.JS.Async (Array Seismic.Extent) := do
-  let key := (s, k, j)
-  if let some t := (← cache.get)[key]? then return t
-  let url := Tiles.tilePath s k j
-  let bytes ← fetchTile s!"tiles/{url}"
-  let some t := Loaded.tileNodes bytes | do
-    log .warn "tile is not a whole number of valid nodes" [("tile", url)]
-    throw (IO.userError s!"tile {url} is malformed")
-  cache.modify (·.insert key t)
-  return t
-
-def stationQuery (cache : TileCache) (mf : Manifest) (s : Nat) (r : Range) : Lasm.JS.Async (Nat → Nat → Seismic.Extent) := do
-  let k := TileRead.readLevel (mf.top s) (r.hi - r.lo) chartCols
-  let (a, b) := TileRead.nodeRange k r.lo r.hi
-  let (j0, j1) := TileRead.tileRange a b
-  let mut tiles : Array (Array Seismic.Extent) := #[]
-  for j in [j0:j1] do
-    tiles := tiles.push (← loadTile cache s k j)
-  return Loaded.levelQuery k (Loaded.nodeOf fun j => tiles.getD (j - j0) #[])
+/-- The extent of each of `chartCols` pixel columns of samples `r` of station `s`, from its tiles, with the finest zooms read from its raw day files by byte range. -/
+def stationColumns (cache : TileCache Seismic.Extent) (mf : Manifest) (s : Nat) (r : Range) : Lasm.JS.Async (Array Seismic.Extent) :=
+  queryColumnsFrom Tiles.tileSize (by decide) 2 (mf.top s + 1) mf.firstLevel
+    (fun k t => s!"tiles/{Tiles.tilePath s k t}") Loaded.decodeTile
+    (fun lo hi => (Raw.pieces s mf.rawSpan mf.rawFirst (mf.rawDays.getD s #[]) lo hi).map fun p =>
+      { url := s!"tiles/{p.path}", first := p.first, start := p.start, len := p.len })
+    Raw.decodeLeaves r.lo r.hi chartCols (some cache)
 
 def loadManifest (ref : IO.Ref (Option Manifest)) : Lasm.JS.Async Manifest := do
   if let some mf := (← ref.get) then return mf
@@ -121,24 +110,24 @@ def loadCatalogue (ref : IO.Ref (Option (Array Seismic.Quake))) : Lasm.JS.Async 
   ref.set (some qs)
   return qs
 
-def sceneOf (manifest : IO.Ref (Option Manifest)) (catalogue : IO.Ref (Option (Array Seismic.Quake))) (cache : TileCache) (src : String) : Lasm.JS.Async Scene := do
+def sceneOf (cache : TileCache Seismic.Extent) (manifest : IO.Ref (Option Manifest)) (catalogue : IO.Ref (Option (Array Seismic.Quake))) (src : String) : Lasm.JS.Async Scene := do
   let some r := Plot.parseSrc src | throw (IO.userError s!"not a sample range: {src}")
   let mf ← loadManifest manifest
   let stations := mf.stations.size
-  let mut qs := #[]
+  let mut cols := #[]
   let mut labels : Array Label := #[]
   for s in [0:stations] do
     try
-      qs := qs.push (← stationQuery cache mf s r)
+      cols := cols.push (← stationColumns cache mf s r)
     catch _ =>
       -- The failure is already logged; an empty track would read as an outage, so say what happened.
-      qs := qs.push fun _ _ => (⟨none⟩, ⟨none⟩)
+      cols := cols.push (Array.replicate chartCols (⟨none⟩, ⟨none⟩))
       labels := labels.push { text := s!"station {s + 1}: tiles failed to load", x := 8, y := 14 + Float.ofNat (s * chartHeight / stations), color := "#b00020" }
   -- A catalogue that failed to load is logged and labelled, never drawn as a quiet period.
   let quakes ← try loadCatalogue catalogue catch _ =>
     labels := labels.push { text := "catalogue failed to load", x := 8, y := Float.ofNat chartHeight - 6, color := "#b00020" }
     pure #[]
-  let list := Plot.traces tracePaint qs r chartCols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
+  let list := Plot.traces tracePaint cols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
   return { commands := Draw.bytes chartCols (trackHeight * stations) list, labels }
 
 def linkedCharts : Nat := 8
@@ -174,9 +163,9 @@ def view (m : Model) : Html Msg :=
     div [attr "id" "inspector", prop "innerHTML" (.str (reading.html (some guaranteeText)))] []]
 
 def main : IO Unit := do
-  let cache ← IO.mkRef {}
   let manifest ← IO.mkRef none
   let catalogue ← IO.mkRef none
-  register "inkproof-chart" (sceneOf manifest catalogue cache)
+  let cache ← TileCache.new tileCacheCapacity
+  register "inkproof-chart" (sceneOf cache manifest catalogue)
   let app : App Unit Model Msg := App.element (fun _ => ({}, Http.get manifestUrl .manifest)) update view
   App.run app

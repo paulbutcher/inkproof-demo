@@ -12,7 +12,7 @@ package «inkproof-demo» where
     ⟨`warningAsError, true⟩
   ]
 
-require «inkproof-web» from git "https://github.com/paulbutcher/inkproof-web" @ "v0.4.4"
+require «inkproof-web» from git "https://github.com/paulbutcher/inkproof-web" @ "v0.4.8"
 require «inkproof-export» from git "https://github.com/paulbutcher/inkproof-export" @ "v0.3.1"
 require «inkproof-viewport» from git "https://github.com/paulbutcher/inkproof-viewport" @ "v0.5.0"
 require «inkproof-scene» from git "https://github.com/paulbutcher/inkproof-scene" @ "v0.8.0"
@@ -45,4 +45,8 @@ lean_exe «build-real-tiles» where
 
 lean_exe «build-catalogue» where
   root := `BuildCatalogueMain
+  srcDir := "gen"
+
+lean_exe «build-manifest» where
+  root := `BuildManifestMain
   srcDir := "gen"

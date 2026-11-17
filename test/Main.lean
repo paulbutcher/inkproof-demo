@@ -284,20 +284,23 @@ theorem Seismic.catalogue_points (qs : Array Seismic.Quake) :
     (Seismic.catalogue qs).points.toList.Perm (qs.map fun q => (q.time, some q.magnitude)).toList :=
   Inkproof.Core.Series.ofUnsorted_perm
 
-private def envelopeItems (qs : Array (Nat → Nat → Seismic.Extent)) (n cols : Nat) :
+private def columnsOf (p : Inkproof.Core.Pyramid Seismic.Extent) (lo hi cols : Nat) : Array Seismic.Extent :=
+  Inkproof.Core.Pyramid.columns Tiles.tileSize (by decide) 2 p.levels.size (p.tile Tiles.tileSize) lo hi cols
+
+private def envelopeItems (qs : Array (Inkproof.Core.Pyramid Seismic.Extent)) (n cols : Nat) :
     List (Inkproof.Scene.Item Inkproof.Scene.Column) :=
-  (Plot.traces ⟨0, ⟨0, 0, 0, 255⟩⟩ qs ⟨0, n⟩ cols 200 1000).toList.flatMap fun c =>
+  (Plot.traces ⟨0, ⟨0, 0, 0, 255⟩⟩ (qs.map (columnsOf · 0 n cols)) 200 1000).toList.flatMap fun c =>
     match c.shape with | .envelope is => is | _ => []
 
 private def stackTest : Except String Unit := do
   let st : Seismic.Station := { seed := 3, outages := [(10, 20), (40, 45)] }
   let n := 60
   let runs (items : List (Inkproof.Scene.Item Inkproof.Scene.Column)) := (items.filter fun | .gap => true | _ => false).length + 1
-  let items := envelopeItems #[(st.pyramid n).query] n n
+  let items := envelopeItems #[st.pyramid n] n n
   check (runs items == 3) s!"two outages split the trace into three, got {runs items}"
   let up := (List.range n).filter fun i => !st.down i
   check ((items.filter fun | .val _ => true | _ => false).length == up.length) "every recorded column is drawn, no outage column is"
-  let coarse := envelopeItems #[(st.pyramid n).query] n 6
+  let coarse := envelopeItems #[st.pyramid n] n 6
   check (runs coarse == 2) s!"only the column wholly inside an outage is a gap, got {runs coarse} runs"
 
 private def tilesTest : Except String Unit := do
@@ -308,43 +311,52 @@ private def tilesTest : Except String Unit := do
       let bs := (Tiles.tileBytes p k j).toList
       (List.range (bs.length / 4)).map fun i => (Tiles.decodeNode (bs.drop (4 * i) |>.take 4)).getD none
     check (nodes == level.toList.map Stack.span) s!"level {k}: tiles decode to the pyramid's nodes"
-    let read := (List.range (p.numTiles Tiles.tileSize k)).flatMap fun j => TileRead.decodeTile (Tiles.tileBytes p k j)
-    check (read == level.toList.map fun e => some (Stack.span e)) s!"level {k}: decodeTile reads the nodes back"
   check ((Tiles.stationTiles 0 p).size == ((List.range p.levels.size).map fun k => p.numTiles Tiles.tileSize k).sum) "one file per tile"
 
 private def loadedTest : Except String Unit := do
   let st : Seismic.Station := { seed := 5, outages := [(300, 700), (1500, 1600)] }
   let p := st.pyramid 2048
   for k in [0, 3, 6] do
-    let some _ := p.levels[k]? | throw s!"no level {k}"
-    let tile (j : Nat) : Array Seismic.Extent := (Loaded.tileNodes (Tiles.tileBytes p k j)).getD #[]
     for j in [0:p.numTiles Tiles.tileSize k] do
-      check ((Loaded.tileNodes (Tiles.tileBytes p k j)).map (·.toList) ==
-          (TileRead.decodeTile (Tiles.tileBytes p k j)).mapM Loaded.nodeExtent)
-        s!"level {k}, tile {j}: tileNodes agrees with decodeTile"
-    check (Loaded.tileNodes (ByteArray.mk #[1, 2, 3]) == none) "a ragged tile file is refused"
-    for (lo, hi) in [(0, 2048), (5, 17), (290, 310), (1490, 1700), (700, 701), (1000, 1033)] do
-      let got := Stack.span (Loaded.levelQuery k (Loaded.nodeOf tile) lo hi)
-      let exact := Stack.span (p.query lo hi)
-      let ok := match exact, got with
-        | some (a, b), some (c, d) => c ≤ a && b ≤ d
-        | none, _ => true
-        | some _, none => false
-      check ok s!"level {k}, samples {lo} to {hi}: the level's read covers the exact extent"
-      if (lo % 2 ^ k == 0 && hi % 2 ^ k == 0) then
-        check (got == exact) s!"level {k}, samples {lo} to {hi}: aligned reads are exact"
+      check ((Loaded.decodeTile (Tiles.tileBytes p k j)).toOption == some (p.tile Tiles.tileSize k j))
+        s!"level {k}, tile {j}: a tile file reads back as the pyramid's nodes"
+  check (Loaded.decodeTile (ByteArray.mk #[1, 2, 3])).toOption.isNone "a ragged tile file is refused"
+  let tiles := fun k t => (Loaded.decodeTile (Tiles.tileBytes p k t)).toOption.getD #[]
+  for (lo, hi, cols) in [(0, 2048, 64), (5, 1700, 40), (290, 1610, 7)] do
+    let got := Inkproof.Core.Pyramid.columnsFrom Tiles.tileSize (by decide) 2 p.levels.size tiles 0 lo hi cols
+    check (got.map Stack.span == (columnsOf p lo hi cols).map Stack.span) s!"samples {lo} to {hi}: columns read from tile files cover the pyramid's"
 
 private def manifestTest : Except String Unit := do
-  let st : Seismic.Station := { seed := 5, outages := [(300, 700)] }
-  let ps := #[st.pyramid 2048, st.pyramid 1000]
-  let some m := Manifest.parse (Tiles.manifest ps) | throw "the tile build's manifest is not read"
-  check (m.firstLevel == 0 && m.stations.size == 2) "first level and stations are read"
-  for (p, s) in ps.toList.zipIdx do
-    check (m.stations[s]? == some (p.levels.map (·.size))) s!"station {s}: level sizes are read"
-    check (m.top s == p.levels.size - 1) s!"station {s}: top level"
-    check (m.samples s ≥ (p.levels[0]?.map (·.size)).getD 0) s!"station {s}: samples cover the leaves"
+  let m : Manifest := ⟨4, #[#[10, 5, 3], #[8, 4]], 1000, 60, #[#[60, 62], #[61]]⟩
+  check (Manifest.parse m.toJson == some m) "a manifest reads back as written"
+  check (m.top 0 == 6 && m.top 1 == 5) "top level"
+  check (m.samples 0 == 160 && m.samples 1 == 128) "samples cover the first level's nodes"
   check (Manifest.parse "{\"tileSize\":256}" == none) "a manifest with no stations is refused"
   check (Manifest.parse "not json" == none) "text that is not JSON is refused"
+  check (Manifest.parse (Manifest.toJson { m with rawSpan := 0 }) == none) "a raw file of no samples is refused"
+
+private def rawTest' : Except String Unit := do
+  let st : Seismic.Station := { seed := 5, outages := [(30, 70)] }
+  let span := 50
+  let xs := st.samples 200
+  let days := #[7, 8, 10]
+  -- file d holds samples (d - 7) * 50 onward; day 9 is missing and so a gap.
+  let leaves (lo hi : Nat) : Array Seismic.Extent := Id.run do
+    let mut out := Array.replicate (hi - lo) (⟨none⟩, ⟨none⟩)
+    for pc in Raw.pieces 0 span 7 days lo hi do
+      let a := pc.first - pc.start / 2
+      let file := Tiles.rawBytes (xs.extract a (a + span))
+      let some ls := (Raw.decodeLeaves (file.extract pc.start (pc.start + pc.len))).toOption | return #[]
+      for (l, i) in ls.zipIdx do out := out.set! (pc.first + i - lo) l
+    return out
+  for (lo, hi) in [(0, 200), (45, 120), (60, 61), (149, 151)] do
+    let got := leaves lo hi
+    check (got.size == hi - lo) s!"{lo} to {hi}: the pieces' bytes are those of the samples they name"
+    for i in [0:hi - lo] do
+      let t := lo + i
+      let expect := if 100 ≤ t ∧ t < 150 then Seismic.extent none else Seismic.extent (xs.getD t none)
+      check ((got[i]?.map Stack.span) == some (Stack.span expect)) s!"{lo} to {hi}: sample {t}"
+  check ((Raw.decodeLeaves (ByteArray.mk #[1, 2, 3])).toOption.isNone) "a ragged raw file is refused"
 
 private def catalogueTest : Except String Unit := do
   let o : Catalogue.Origin := ⟨2025, 60, 20⟩
@@ -382,8 +394,8 @@ private def plotTest : Except String Unit := do
     let r : View.Range := ⟨lo, hi⟩
     check ((Plot.parseSrc (Plot.src r)).map (fun r => (r.lo, r.hi)) == some (lo, hi)) s!"{lo}-{hi}: src round trip"
     let gaps (items : List (Inkproof.Scene.Item Inkproof.Scene.Column)) := (items.filter fun | .gap => true | _ => false).length
-    let spans := (Stack.columns p.query lo hi 60).map Stack.span
-    let cmds := Plot.traces ⟨0, ⟨0, 0, 0, 255⟩⟩ #[p.query] r 60 100 1000
+    let spans := (columnsOf p lo hi 60).map Stack.span
+    let cmds := Plot.traces ⟨0, ⟨0, 0, 0, 255⟩⟩ #[columnsOf p lo hi 60] 100 1000
     let items := cmds.toList.flatMap fun c => match c.shape with | .envelope is => is | _ => []
     let present := (spans.filter (·.isSome)).size
     check ((items.filter fun | .val _ => true | _ => false).length == present) s!"{lo}-{hi}: every present column is drawn"
@@ -473,5 +485,5 @@ private def rawTest : Except String Unit := do
 def main (args : List String) : IO UInt32 := do
   let real ← IO.FS.readBinFile "fixtures/IU.ANMO.00.HHZ.excerpt.mseed"
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"loaded tiles", loadedTest⟩, ⟨"manifest", manifestTest⟩, ⟨"catalogue", catalogueTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"loaded tiles", loadedTest⟩, ⟨"manifest", manifestTest⟩, ⟨"raw files", rawTest'⟩, ⟨"catalogue", catalogueTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩,
     platformTest (args.contains "--expect-wasm")]

@@ -2,7 +2,7 @@
 Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
-import Inkproof.Demo.TileRead
+import Inkproof.Demo.Tiles
 
 namespace Inkproof.Demo.Loaded
 
@@ -49,20 +49,15 @@ theorem tileNodes_eq (bs : ByteArray) (ns : Array Extent) (h : tileNodes bs = so
   · simp only [h4, ↓reduceIte] at h
     cases h
 
-/-- The extent of samples `lo` to `hi - 1` read from the nodes of one level: the merge of every node that overlaps them. -/
-def levelQuery (level : Nat) (node : Nat → Extent) (lo hi : Nat) : Extent :=
-  Aggregate.fold node (Array.range' (TileRead.nodeRange level lo hi).1
-    ((TileRead.nodeRange level lo hi).2 - (TileRead.nodeRange level lo hi).1))
+/-- A fetched tile file as the nodes it holds, or why it is not a tile file. -/
+def decodeTile (bs : ByteArray) : Except String (Array Extent) :=
+  match tileNodes bs with
+  | some ns => .ok ns
+  | none => .error "not a whole number of valid tile nodes"
 
-theorem levelQuery_eq (level : Nat) (node : Nat → Extent) (lo hi : Nat) :
-    levelQuery level node lo hi = Aggregate.fold node (Array.range' (lo / 2 ^ level)
-      ((hi + 2 ^ level - 1) / 2 ^ level - lo / 2 ^ level)) := rfl
-
-/-- The node `n` of a level cut into tiles of `tileSize` nodes, given the nodes of each tile; past the end of a tile there are no samples, as at the end of a level. -/
-def nodeOf (tile : Nat → Array Extent) (n : Nat) : Extent :=
-  (tile (n / tileSize)).getD (n % tileSize) (⟨none⟩, ⟨none⟩)
-
-theorem nodeOf_eq (tile : Nat → Array Extent) (n : Nat) :
-    nodeOf tile n = (tile (n / tileSize)).getD (n % tileSize) (⟨none⟩, ⟨none⟩) := rfl
+theorem decodeTile_eq (bs : ByteArray) (ns : Array Extent) :
+    decodeTile bs = .ok ns ↔ tileNodes bs = some ns := by
+  unfold decodeTile
+  cases tileNodes bs <;> simp
 
 end Inkproof.Demo.Loaded

@@ -11,7 +11,7 @@ The public modules under `Inkproof/Demo/`, by job:
 - Decode miniSEED recordings (Steim 1 and 2, either byte order): `MiniSeed.decodeFile`, `MiniSeed.decodeRecord`.
 - Lay decoded records out on a regular sample grid with gaps: `Place.place`.
 - Cut a station into tile files and a manifest, using Core's pyramid: `Tiles.stationTiles`, `Tiles.tileBytes`, `Tiles.manifest`, `Tiles.encodeNode`, `Tiles.rawBytes`.
-- Read tiles back into min/max extents for a pixel range: `TileRead.levelFor`, `TileRead.nodeRange`, `Loaded.tileNodes`, `Loaded.levelQuery`, `Manifest.parse`.
+- Decode fetched tile and raw sample files into min/max extents, and find the raw day files a sample range needs: `Loaded.decodeTile`, `Raw.decodeLeaves`, `Raw.pieces`, `Manifest.parse`, `Manifest.toJson`.
 - Parse and write the earthquake catalogue (USGS CSV to `catalogue.json`): `Catalogue.parseCsv`, `Catalogue.toJson`, `Catalogue.parseJson`.
 - Turn extents and quakes into chart items for a view range: `Plot.traces`, `Plot.quakes`, `Plot.bins`, `Plot.src`, `Seismic.markers`, `View.inView`.
 - Draw a display list to GPU commands or raw pixels: `Draw.frame`, `Draw.tile`, `Draw.bytes`.
@@ -28,7 +28,8 @@ The demo charts public seismic recordings and earthquakes. Fetching is a separat
 
 1. Fetch: `node scripts/fetch.mjs [--data <dir>] [--quarter] [--days <n>]`. The data directory defaults to the git-ignored `data/`. By default it fetches one station for one week (`scripts/selection.json`); `--quarter` fetches the pinned four stations for the 90 days from 2025-03-01, about 3 GB of miniSEED. Days already on disk are skipped, so rerun it to resume an interrupted fetch. Only Node 24 is needed.
 2. Build tiles: `lake exe build-real-tiles <miniSEED station dir> <output dir>` cuts one station's day files into tiles. Peak memory is about 560 MiB for one day, 580 MiB for a week and 1.2 GiB for 20, 40 and 90 days of ANMO (peak resident size), because it works in chunks of 2^20 samples and not the whole recording; it stops growing between a week and 20 days.
-3. Build the catalogue: `lake exe build-catalogue <data>/catalogue/<range>.csv <output dir>` writes `catalogue.json` next to the tiles, placing each quake on the tiles' sample grid from the `recording.json` that step 2 wrote. It holds the catalogue (a few thousand rows) in memory and nothing else.
+3. Describe the tile set: `lake exe build-manifest <site dir> <station tile dir>...` writes the site's `manifest.json` from the stations' manifests and raw day files; link each station's `s0` as `<site dir>/s<i>`.
+4. Build the catalogue: `lake exe build-catalogue <data>/catalogue/<range>.csv <output dir>` writes `catalogue.json` next to the tiles, placing each quake on the tiles' sample grid from the `recording.json` that step 2 wrote. It holds the catalogue (a few thousand rows) in memory and nothing else.
 4. Serve: the static site from local disk.
 
 ## Building the browser app

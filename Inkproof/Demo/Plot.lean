@@ -20,17 +20,15 @@ theorem projection_x (y0 height top : Nat) (x : Nat) : (projection y0 height top
 theorem projection_y (y0 height top : Nat) (v : Int) :
     (projection y0 height top).y v = y0 + Stack.pixelY height top v := rfl
 
-/-- The stacked stations over samples `r` in `cols` pixel columns, each track `height` pixels tall, a gap wherever a station recorded nothing for at least one pixel column. -/
-def traces (paint : Paint) (qs : Array (Nat → Nat → Extent)) (r : Range) (cols height top : Nat) : DisplayList :=
-  qs.zipIdx.flatMap fun (q, i) =>
-    compileEnvelope paint (projection (i * height) height top) ((Stack.columns q r.lo r.hi cols).map Stack.span)
+/-- The stacked stations, each given as the extent of each of its pixel columns and drawn in a track `height` pixels tall, a gap wherever a station recorded nothing for at least one pixel column. -/
+def traces (paint : Paint) (columns : Array (Array Extent)) (height top : Nat) : DisplayList :=
+  columns.zipIdx.flatMap fun (cs, i) =>
+    compileEnvelope paint (projection (i * height) height top) (cs.map Stack.span)
 
-theorem mem_traces (paint : Paint) (qs : Array (Nat → Nat → Extent)) (r : Range) (cols height top : Nat)
-    (c : Command) :
-    c ∈ traces paint qs r cols height top ↔
-      ∃ q i, (q, i) ∈ qs.zipIdx ∧
-        c ∈ compileEnvelope paint (projection (i * height) height top)
-          ((Stack.columns q r.lo r.hi cols).map Stack.span) := by
+theorem mem_traces (paint : Paint) (columns : Array (Array Extent)) (height top : Nat) (c : Command) :
+    c ∈ traces paint columns height top ↔
+      ∃ cs i, (cs, i) ∈ columns.zipIdx ∧
+        c ∈ compileEnvelope paint (projection (i * height) height top) (cs.map Stack.span) := by
   simp [traces]
 
 /-- The pixel columns of `cols` across the samples `r`, the sample `t` falling in column `(bins r cols).col t`. -/

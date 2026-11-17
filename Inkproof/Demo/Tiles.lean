@@ -130,12 +130,9 @@ theorem stationTiles_size (s : Nat) (p : Pyramid Extent) :
     (stationTiles s p).size = ((List.range p.levels.size).map fun k => p.numTiles tileSize k).sum := by
   simp [stationTiles, List.length_flatMap]
 
-/-- A description of the tile set for the browser: the first level written (finer ones are read from the raw samples), then per station the node count of each level from there. No theorem: the string is JSON built by concatenation, and a statement about it needs a JSON parser the demo does not have. -/
+/-- A station's manifest: the first level written (finer ones are read from the raw samples), then the node count of each level from there. No theorem: the string is JSON built by concatenation, and a statement about it needs a JSON parser the demo does not have. -/
 def manifestOfSizes (firstLevel : Nat) (sizes : Array (Array Nat)) : String :=
   s!"\{\"tileSize\":{tileSize},\"firstLevel\":{firstLevel},\"stations\":[" ++
     ",".intercalate (sizes.toList.map fun ls => "[" ++ ",".intercalate (ls.toList.map toString) ++ "]") ++ "]}"
-
-def manifest (ps : Array (Pyramid Extent)) : String :=
-  manifestOfSizes 0 (ps.map fun p => p.levels.map (·.size))
 
 end Inkproof.Demo.Tiles
