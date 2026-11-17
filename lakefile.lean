@@ -14,7 +14,7 @@ package «inkproof-demo» where
 
 require «inkproof-web» from git "https://github.com/paulbutcher/inkproof-web" @ "v0.4.1"
 require «inkproof-export» from git "https://github.com/paulbutcher/inkproof-export" @ "v0.3.1"
-require «inkproof-viewport» from git "https://github.com/paulbutcher/inkproof-viewport" @ "v0.4.1"
+require «inkproof-viewport» from git "https://github.com/paulbutcher/inkproof-viewport" @ "v0.5.0"
 require «inkproof-scene» from git "https://github.com/paulbutcher/inkproof-scene" @ "v0.7.1"
 require «inkproof-core» from git "https://github.com/paulbutcher/inkproof-core" @ "v0.11.0"
 require «inkproof-gpu» from git "https://github.com/paulbutcher/inkproof-gpu" @ "v0.6.0"

@@ -5,6 +5,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import Inkproof.Demo
 import Inkproof.Demo.Place
 import Inkproof.Viewport
+import Inkproof.Viewport.Proofs
 import Inkproof.Scene
 import Inkproof.Gpu
 import Inkproof.Core.Proofs
@@ -22,6 +23,10 @@ private def lib : Library where
     ("X/G.lean", "namespace X.G\ntheorem Y.mono : True := trivial\n@[simp] protected theorem mono : True := trivial")]
 
 /-! Theorems for the pure functions whose definitions unfold directly. `escapeHtml`, `lineCount`, `locate`, `declares` and `Library.theorems` go through `String.foldl`, `String.splitOn`, `Array.qsort` and `Array.filterMap`, whose lemmas are too thin to close proofs about them here, so those behaviours are tested below instead. `tcbHtml` and `codeFiles` on non-empty input are string concatenations and folds over those same functions, so they are tested too. -/
+
+theorem ofInterval_valid (n : Nat) (hn : 0 < n) (a : Inkproof.Viewport.Interval Rat) :
+    (View.Range.ofInterval n a).Valid n :=
+  Inkproof.Viewport.Interval.indexRange_lt_le a n hn
 
 theorem sourceUrl_unlocated (l : Library) (n : String) (h : locate l.sources n = none) :
     sourceUrl l n = githubUrl l.repo l.tag := by simp [sourceUrl, h]

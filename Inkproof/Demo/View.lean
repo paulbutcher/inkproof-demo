@@ -22,20 +22,11 @@ def Range.Valid (n : Nat) (r : Range) : Prop := r.lo < r.hi ∧ r.hi ≤ n
 
 /-- The samples a viewport interval shows, clamped to a recording of `n > 0` samples and never empty. -/
 def Range.ofInterval (n : Nat) (a : Inkproof.Viewport.Interval Rat) : Range :=
-  let lo := min (n - 1) a.start.floor.toNat
-  ⟨lo, min n (max (lo + 1) (a.start + a.span).ceil.toNat)⟩
+  ⟨(a.indexRange n).1, (a.indexRange n).2⟩
 
-theorem Range.ofInterval_lo (n : Nat) (a : Inkproof.Viewport.Interval Rat) :
-    (Range.ofInterval n a).lo = min (n - 1) a.start.floor.toNat := rfl
-
-theorem Range.ofInterval_hi (n : Nat) (a : Inkproof.Viewport.Interval Rat) :
-    (Range.ofInterval n a).hi =
-      min n (max ((Range.ofInterval n a).lo + 1) (a.start + a.span).ceil.toNat) := rfl
-
-theorem Range.ofInterval_valid (n : Nat) (hn : 0 < n) (a : Inkproof.Viewport.Interval Rat) :
-    (Range.ofInterval n a).Valid n := by
-  simp only [Range.Valid, Range.ofInterval]
-  omega
+theorem Range.ofInterval_eq (n : Nat) (a : Inkproof.Viewport.Interval Rat) :
+    (Range.ofInterval n a).lo = (a.indexRange n).1 ∧ (Range.ofInterval n a).hi = (a.indexRange n).2 :=
+  ⟨rfl, rfl⟩
 
 /-- The quakes whose time lies inside `r`. -/
 def inView (r : Range) (qs : Array Seismic.Quake) : Array Seismic.Quake :=

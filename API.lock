@@ -288,9 +288,7 @@ field Inkproof.Demo.View.Range.hi : Inkproof.Demo.View.Range → Nat
 field Inkproof.Demo.View.Range.lo : Inkproof.Demo.View.Range → Nat
 constructor Inkproof.Demo.View.Range.mk : Nat → Nat → Inkproof.Demo.View.Range
 def Inkproof.Demo.View.Range.ofInterval : Nat → Inkproof.Viewport.Interval Rat → Inkproof.Demo.View.Range
-theorem Inkproof.Demo.View.Range.ofInterval_hi : ∀ (n : Nat) (a : Inkproof.Viewport.Interval Rat), (Inkproof.Demo.View.Range.ofInterval n a).hi = Min.min n (Max.max ((Inkproof.Demo.View.Range.ofInterval n a).lo + 1) (a.start + a.span).ceil.toNat)
-theorem Inkproof.Demo.View.Range.ofInterval_lo : ∀ (n : Nat) (a : Inkproof.Viewport.Interval Rat), (Inkproof.Demo.View.Range.ofInterval n a).lo = Min.min (n - 1) a.start.floor.toNat
-theorem Inkproof.Demo.View.Range.ofInterval_valid : ∀ (n : Nat), 0 < n → ∀ (a : Inkproof.Viewport.Interval Rat), Inkproof.Demo.View.Range.Valid n (Inkproof.Demo.View.Range.ofInterval n a)
+theorem Inkproof.Demo.View.Range.ofInterval_eq : ∀ (n : Nat) (a : Inkproof.Viewport.Interval Rat), (Inkproof.Demo.View.Range.ofInterval n a).lo = (a.indexRange n).fst ∧ (Inkproof.Demo.View.Range.ofInterval n a).hi = (a.indexRange n).snd
 def Inkproof.Demo.View.Range.width : Inkproof.Demo.View.Range → Nat
 theorem Inkproof.Demo.View.Range.width_eq : ∀ (r : Inkproof.Demo.View.Range), r.width = r.hi - r.lo
 def Inkproof.Demo.View.inView : Inkproof.Demo.View.Range → Array Inkproof.Demo.Seismic.Quake → Array Inkproof.Demo.Seismic.Quake
