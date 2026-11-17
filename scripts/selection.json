@@ -1,8 +1,11 @@
 {
-  "slice": { "start": "2025-03-01", "days": 7 },
-  "year": { "start": "2025-01-01", "days": 365 },
+  "slice": { "start": "2025-03-01", "days": 7, "stations": 1 },
+  "quarter": { "start": "2025-03-01", "days": 90 },
   "stations": [
-    { "net": "IU", "sta": "ANMO", "loc": "00", "cha": "HHZ" }
+    { "net": "IU", "sta": "ANMO", "loc": "00", "cha": "HHZ" },
+    { "net": "IU", "sta": "COLA", "loc": "00", "cha": "HHZ" },
+    { "net": "IU", "sta": "KONO", "loc": "00", "cha": "HHZ" },
+    { "net": "IU", "sta": "MAJO", "loc": "00", "cha": "HHZ" }
   ],
   "catalogue": { "minMagnitude": 5.5 }
 }

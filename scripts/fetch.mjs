@@ -4,7 +4,7 @@
 // Fetches miniSEED (EarthScope) and the earthquake catalogue (USGS ComCat) into a
 // data directory. One dataselect request per station, channel and day; days already
 // on disk are skipped, so an interrupted fetch resumes. Usage:
-//   node scripts/fetch.mjs [--data <dir>] [--full-year] [--days <n>]
+//   node scripts/fetch.mjs [--data <dir>] [--quarter] [--days <n>]
 import { readFile, writeFile, mkdir, rename, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -14,7 +14,7 @@ const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i < 0 ? undefined : args[i + 1]; };
 const dataDir = resolve(opt("--data") ?? join(here, "..", "data"));
 const selection = JSON.parse(await readFile(join(here, "selection.json"), "utf8"));
-const range = args.includes("--full-year") ? selection.year : selection.slice;
+const range = args.includes("--quarter") ? selection.quarter : selection.slice;
 const days = Number(opt("--days") ?? range.days);
 const concurrency = 2;
 const retries = 5;
@@ -54,7 +54,7 @@ const save = async (path, bytes) => {
 };
 
 const jobs = [];
-for (const s of selection.stations) {
+for (const s of selection.stations.slice(0, range.stations ?? selection.stations.length)) {
   const id = `${s.net}.${s.sta}.${s.loc}.${s.cha}`;
   for (let i = 0; i < days; i++) {
     const day = dayString(range.start, i);

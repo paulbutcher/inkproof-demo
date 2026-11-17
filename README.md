@@ -25,7 +25,7 @@ The public modules under `Inkproof/Demo/`, by job:
 
 The demo charts public seismic recordings and earthquakes. Fetching is a separate step from building, and nothing here runs it for you.
 
-1. Fetch: `node scripts/fetch.mjs [--data <dir>] [--full-year] [--days <n>]`. The data directory defaults to the git-ignored `data/`. By default it fetches one station for one week (`scripts/selection.json`); `--full-year` fetches the pinned year, which is large. Days already on disk are skipped, so rerun it to resume an interrupted fetch. Only Node 24 is needed.
+1. Fetch: `node scripts/fetch.mjs [--data <dir>] [--quarter] [--days <n>]`. The data directory defaults to the git-ignored `data/`. By default it fetches one station for one week (`scripts/selection.json`); `--quarter` fetches the pinned four stations for the 90 days from 2025-03-01, about 3 GB of miniSEED. Days already on disk are skipped, so rerun it to resume an interrupted fetch. Only Node 24 is needed.
 2. Build tiles: `lake exe build-real-tiles <miniSEED station dir> <output dir>` cuts one station's day files into tiles. Peak memory is about 560 MiB for one day and 580 MiB for a week of ANMO (measured with `getrusage`), because it works in chunks of 2^20 samples and not the whole recording; it does not grow with the range.
 3. Build the catalogue: `lake exe build-catalogue <data>/catalogue/<range>.csv <output dir>` writes `catalogue.json` next to the tiles, placing each quake on the tiles' sample grid from the `recording.json` that step 2 wrote. It holds the catalogue (a few thousand rows) in memory and nothing else.
 4. Serve: the static site from local disk.
