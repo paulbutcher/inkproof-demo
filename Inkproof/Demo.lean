@@ -14,6 +14,7 @@ import Inkproof.Demo.Seismic
 import Inkproof.Demo.Stack
 import Inkproof.Demo.Tiles
 import Inkproof.Demo.TileRead
+import Inkproof.Demo.Loaded
 import Inkproof.Demo.View
 import Inkproof.Demo.Series
 

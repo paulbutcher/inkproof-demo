@@ -3,6 +3,7 @@ Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 import Lasm.UI
+import Lasm.JS.Web.Fetch
 import Inkproof.Demo
 import Inkproof.Web.Host.Chart
 
@@ -33,8 +34,6 @@ inductive Msg
 def stations : Array Seismic.Station :=
   #[⟨1, [(900, 1300)]⟩, ⟨2, [(2000, 2600)]⟩, ⟨3, []⟩, ⟨4, [(300, 500), (3000, 3500)]⟩]
 
-def pyramids : Array (Inkproof.Core.Pyramid Seismic.Extent) := stations.map (·.pyramid sampleCount)
-
 def quakes : Array Seismic.Quake := #[⟨100, 3⟩, ⟨1000, 5⟩, ⟨2048, 4⟩, ⟨2049, 6⟩, ⟨3700, 7⟩]
 
 def series : List Inkproof.Scene.Pt := Series.samples 200 20
@@ -55,9 +54,39 @@ def tracePaint : Inkproof.Scene.Paint := ⟨0, ⟨70, 130, 180, 255⟩⟩
 
 def quakeStyle : Inkproof.Scene.ScatterStyle := ⟨⟨1, ⟨220, 20, 60, 255⟩⟩, .circle, 4⟩
 
-def sceneOf (src : String) : Lasm.JS.Async Scene := do
+def topLevel : Nat := 12
+
+abbrev TileCache := IO.Ref (Std.HashMap (Nat × Nat × Nat) (Array Seismic.Extent))
+
+def loadTile (cache : TileCache) (s k j : Nat) : Lasm.JS.Async (Array Seismic.Extent) := do
+  let key := (s, k, j)
+  if let some t := (← cache.get)[key]? then return t
+  let url := Tiles.tilePath s k j
+  let resp ← Lasm.JS.Web.fetch (.usvString s!"tiles/{url}")
+  unless ← resp.ok do
+    log .warn "tile fetch failed" [("tile", url), ("status", toString (← resp.status))]
+    throw (IO.userError s!"tile {url} not available")
+  let some t := Loaded.tileNodes (← resp.bytes) | do
+    log .warn "tile is not a whole number of valid nodes" [("tile", url)]
+    throw (IO.userError s!"tile {url} is malformed")
+  cache.modify (·.insert key t)
+  return t
+
+def stationQuery (cache : TileCache) (s : Nat) (r : Range) : Lasm.JS.Async (Nat → Nat → Seismic.Extent) := do
+  let k := TileRead.readLevel topLevel (r.hi - r.lo) chartCols
+  let (a, b) := TileRead.nodeRange k r.lo r.hi
+  let (j0, j1) := TileRead.tileRange a b
+  let mut tiles : Array (Array Seismic.Extent) := #[]
+  for j in [j0:j1] do
+    tiles := tiles.push (← loadTile cache s k j)
+  return Loaded.levelQuery k (Loaded.nodeOf fun j => tiles.getD (j - j0) #[])
+
+def sceneOf (cache : TileCache) (src : String) : Lasm.JS.Async Scene := do
   let some r := Plot.parseSrc src | throw (IO.userError s!"not a sample range: {src}")
-  let list := Plot.traces tracePaint (pyramids.map (·.query)) r chartCols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
+  let mut qs := #[]
+  for s in [0:stations.size] do
+    qs := qs.push (← stationQuery cache s r)
+  let list := Plot.traces tracePaint qs r chartCols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
   return { commands := Draw.bytes 0xffffffff chartCols (trackHeight * stations.size) list }
 
 def linkedCharts : Nat := 8
@@ -91,6 +120,7 @@ def view (m : Model) : Html Msg :=
     div [attr "id" "inspector", prop "innerHTML" (.str (reading.html (some guaranteeText)))] []]
 
 def main : IO Unit := do
-  register "inkproof-chart" sceneOf
+  let cache ← IO.mkRef {}
+  register "inkproof-chart" (sceneOf cache)
   let app : App Unit Model Msg := App.sandbox {} update view
   App.run app

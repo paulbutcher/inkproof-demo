@@ -83,6 +83,18 @@ field Inkproof.Demo.Library.repo : Inkproof.Demo.Library → String
 field Inkproof.Demo.Library.sources : Inkproof.Demo.Library → Array (String × String)
 field Inkproof.Demo.Library.tag : Inkproof.Demo.Library → String
 def Inkproof.Demo.Library.theorems : Inkproof.Demo.Library → Array Inkproof.Demo.TheoremEntry
+def Inkproof.Demo.Loaded.fileNode : ByteArray → Nat → Option Inkproof.Demo.Seismic.Extent
+def Inkproof.Demo.Loaded.levelQuery : Nat → (Nat → Inkproof.Demo.Seismic.Extent) → Nat → Nat → Inkproof.Demo.Seismic.Extent
+theorem Inkproof.Demo.Loaded.levelQuery_eq : ∀ (level : Nat) (node : Nat → Inkproof.Demo.Seismic.Extent) (lo hi : Nat), Inkproof.Demo.Loaded.levelQuery level node lo hi = Inkproof.Core.Aggregate.fold node (Array.range' (lo / 2 ^ level) ((hi + 2 ^ level - 1) / 2 ^ level - lo / 2 ^ level))
+def Inkproof.Demo.Loaded.nodeExtent : Option (Option (Int × Int)) → Option Inkproof.Demo.Seismic.Extent
+theorem Inkproof.Demo.Loaded.nodeExtent_gap : Option.map Inkproof.Demo.Stack.span (Inkproof.Demo.Loaded.nodeExtent (Option.some Option.none)) = Option.some Option.none
+theorem Inkproof.Demo.Loaded.nodeExtent_invalid : Inkproof.Demo.Loaded.nodeExtent Option.none = Option.none
+theorem Inkproof.Demo.Loaded.nodeExtent_span : ∀ (a b : Int), Option.map Inkproof.Demo.Stack.span (Inkproof.Demo.Loaded.nodeExtent (Option.some (Option.some (a, b)))) = Option.some (Option.some (a, b))
+def Inkproof.Demo.Loaded.nodeOf : (Nat → Array Inkproof.Demo.Seismic.Extent) → Nat → Inkproof.Demo.Seismic.Extent
+theorem Inkproof.Demo.Loaded.nodeOf_eq : ∀ (tile : Nat → Array Inkproof.Demo.Seismic.Extent) (n : Nat), Inkproof.Demo.Loaded.nodeOf tile n = (tile (n / Inkproof.Demo.Tiles.tileSize)).getD (n % Inkproof.Demo.Tiles.tileSize) ({ get := Option.none }, { get := Option.none })
+def Inkproof.Demo.Loaded.tileNodes : ByteArray → Option (Array Inkproof.Demo.Seismic.Extent)
+theorem Inkproof.Demo.Loaded.tileNodes_eq : ∀ (bs : ByteArray) (ns : Array Inkproof.Demo.Seismic.Extent), Inkproof.Demo.Loaded.tileNodes bs = Option.some ns → ns = Array.filterMap (Inkproof.Demo.Loaded.fileNode bs) (Array.range (bs.size / 4)) ∧ ns.size = bs.size / 4
+theorem Inkproof.Demo.Loaded.tileNodes_ragged : ∀ (bs : ByteArray), bs.size % 4 ≠ 0 → Inkproof.Demo.Loaded.tileNodes bs = Option.none
 structure Inkproof.Demo.MiniSeed.Record : Type
 field Inkproof.Demo.MiniSeed.Record.day : Inkproof.Demo.MiniSeed.Record → Nat
 field Inkproof.Demo.MiniSeed.Record.factor : Inkproof.Demo.MiniSeed.Record → Int

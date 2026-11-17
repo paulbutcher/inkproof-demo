@@ -213,6 +213,28 @@ private def tilesTest : Except String Unit := do
     check (read == level.toList.map fun e => some (Stack.span e)) s!"level {k}: decodeTile reads the nodes back"
   check ((Tiles.stationTiles 0 p).size == (p.levels.toList.map Tiles.tileCount).sum) "one file per tile"
 
+private def loadedTest : Except String Unit := do
+  let st : Seismic.Station := { seed := 5, outages := [(300, 700), (1500, 1600)] }
+  let p := st.pyramid 2048
+  for k in [0, 3, 6] do
+    let some level := p.levels[k]? | throw s!"no level {k}"
+    let tile (j : Nat) : Array Seismic.Extent := (Loaded.tileNodes (Tiles.tileBytes level j)).getD #[]
+    for j in [0:Tiles.tileCount level] do
+      check ((Loaded.tileNodes (Tiles.tileBytes level j)).map (·.toList) ==
+          (TileRead.decodeTile (Tiles.tileBytes level j)).mapM Loaded.nodeExtent)
+        s!"level {k}, tile {j}: tileNodes agrees with decodeTile"
+    check (Loaded.tileNodes (ByteArray.mk #[1, 2, 3]) == none) "a ragged tile file is refused"
+    for (lo, hi) in [(0, 2048), (5, 17), (290, 310), (1490, 1700), (700, 701), (1000, 1033)] do
+      let got := Stack.span (Loaded.levelQuery k (Loaded.nodeOf tile) lo hi)
+      let exact := Stack.span (p.query lo hi)
+      let ok := match exact, got with
+        | some (a, b), some (c, d) => c ≤ a && b ≤ d
+        | none, _ => true
+        | some _, none => false
+      check ok s!"level {k}, samples {lo} to {hi}: the level's read covers the exact extent"
+      if (lo % 2 ^ k == 0 && hi % 2 ^ k == 0) then
+        check (got == exact) s!"level {k}, samples {lo} to {hi}: aligned reads are exact"
+
 private def drawTest : Except String Unit := do
   let style : Inkproof.Scene.ScatterStyle := ⟨⟨1, ⟨200, 30, 30, 255⟩⟩, .circle, 4⟩
   let proj : Inkproof.Scene.Projection Nat Nat := ⟨fun t => (t : Rat) / 10, fun m => 100 - (m : Rat) * 5⟩
@@ -318,5 +340,5 @@ private def rawTest : Except String Unit := do
 def main (args : List String) : IO UInt32 := do
   let real ← IO.FS.readBinFile "fixtures/IU.ANMO.00.HHZ.excerpt.mseed"
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"loaded tiles", loadedTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩,
     platformTest (args.contains "--expect-wasm")]
