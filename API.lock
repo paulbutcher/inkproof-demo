@@ -313,7 +313,6 @@ instance Inkproof.Demo.instReprManifest : Repr Inkproof.Demo.Manifest
 def Inkproof.Demo.instReprManifest.repr : Inkproof.Demo.Manifest → Nat → Std.Format
 def Inkproof.Demo.lineCount : String → Nat
 def Inkproof.Demo.locate : Array (String × String) → String → Option (String × Option Nat)
-def Inkproof.Demo.parseTheorem : String → Option (String × String)
 def Inkproof.Demo.sourceUrl : Inkproof.Demo.Library → String → String
 def Inkproof.Demo.tcbHtml : Array Inkproof.Demo.CodeFile → String
 def Inkproof.Demo.tcbRows : List Inkproof.Demo.TcbRow

@@ -21,10 +21,7 @@ private def lib : Library where
     ("X.lean", "namespace X\n\ntheorem f_eq : True := trivial\n"),
     ("X/G.lean", "namespace X.G\ntheorem Y.mono : True := trivial\n@[simp] protected theorem mono : True := trivial")]
 
-/-! Theorems for the pure functions whose definitions unfold directly. `escapeHtml`, `lineCount`, `locate`, `declares`, `parseTheorem` on theorem lines and `Library.theorems` go through `String.foldl`, `String.splitOn`, `Array.qsort` and `Array.filterMap`, whose lemmas are too thin to close proofs about them here, so those behaviours are tested below instead. `tcbHtml` and `codeFiles` on non-empty input are string concatenations and folds over those same functions, so they are tested too. -/
-
-theorem parseTheorem_other (line : String) (h : line.startsWith "theorem " = false) :
-    parseTheorem line = none := by simp [parseTheorem, h]
+/-! Theorems for the pure functions whose definitions unfold directly. `escapeHtml`, `lineCount`, `locate`, `declares` and `Library.theorems` go through `String.foldl`, `String.splitOn`, `Array.qsort` and `Array.filterMap`, whose lemmas are too thin to close proofs about them here, so those behaviours are tested below instead. `tcbHtml` and `codeFiles` on non-empty input are string concatenations and folds over those same functions, so they are tested too. -/
 
 theorem sourceUrl_unlocated (l : Library) (n : String) (h : locate l.sources n = none) :
     sourceUrl l n = githubUrl l.repo l.tag := by simp [sourceUrl, h]

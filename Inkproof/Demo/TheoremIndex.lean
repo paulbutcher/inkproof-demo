@@ -3,6 +3,8 @@ Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
+import InkproofTools.ApiLock.Reader
+
 namespace Inkproof.Demo
 
 /-- A released library: its repository name, release tag, `API.lock` text and Lean sources as (path, contents). -/
@@ -18,15 +20,7 @@ structure TheoremEntry where
   statement : String
   url : String
 
-/-- The name and statement of an `API.lock` line that declares a theorem. -/
-def parseTheorem (line : String) : Option (String × String) :=
-  if line.startsWith "theorem " then
-    match (line.drop 8).toString.splitOn " : " with
-    | name :: rest@(_ :: _) => some (name, " : ".intercalate rest)
-    | _ => none
-  else none
-
-/-- Whether `line` declares theorem `name`, written in full or relative to its namespaces. -/
+/-- Whether the source `line` declares theorem `name`, written in full or relative to its namespaces. -/
 def declares (name : String) (line : String) : Bool :=
   match line.splitOn "theorem " with
   | _ :: rest@(_ :: _) =>
@@ -57,8 +51,8 @@ def sourceUrl (lib : Library) (name : String) : String :=
 /-- Every theorem in the library's `API.lock`, in file order. -/
 def Library.theorems (lib : Library) : Array TheoremEntry :=
   (lib.apiLock.splitOn "\n").toArray.filterMap fun line =>
-    (parseTheorem line).map fun (name, statement) =>
-      { library := lib.repo, name, statement, url := sourceUrl lib name }
+    (InkproofTools.ApiLock.parseTheorem line).map fun thm =>
+      { library := lib.repo, name := thm.name, statement := thm.statement, url := sourceUrl lib thm.name }
 
 def escapeHtml (s : String) : String :=
   s.foldl (fun acc c => acc ++ match c with

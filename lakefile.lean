@@ -18,6 +18,7 @@ require «inkproof-viewport» from git "https://github.com/paulbutcher/inkproof-
 require «inkproof-scene» from git "https://github.com/paulbutcher/inkproof-scene" @ "v0.7.1"
 require «inkproof-core» from git "https://github.com/paulbutcher/inkproof-core" @ "v0.10.1"
 require «inkproof-gpu» from git "https://github.com/paulbutcher/inkproof-gpu" @ "v0.5.1"
+require «inkproof-tools» from git "https://github.com/paulbutcher/inkproof-tools" @ "v0.3.0"
 
 @[default_target]
 lean_lib InkproofDemo where
