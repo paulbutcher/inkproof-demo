@@ -209,6 +209,8 @@ private def tilesTest : Except String Unit := do
       let bs := (Tiles.tileBytes level j).toList
       (List.range (bs.length / 4)).map fun i => (Tiles.decodeNode (bs.drop (4 * i) |>.take 4)).getD none
     check (nodes == level.toList.map Stack.span) s!"level {k}: tiles decode to the pyramid's nodes"
+    let read := (List.range (Tiles.tileCount level)).flatMap fun j => TileRead.decodeTile (Tiles.tileBytes level j)
+    check (read == level.toList.map fun e => some (Stack.span e)) s!"level {k}: decodeTile reads the nodes back"
   check ((Tiles.stationTiles 0 p).size == (p.levels.toList.map Tiles.tileCount).sum) "one file per tile"
 
 private def drawTest : Except String Unit := do

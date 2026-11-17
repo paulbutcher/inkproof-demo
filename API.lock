@@ -220,6 +220,19 @@ constructor Inkproof.Demo.TheoremEntry.mk : String → String → String → Str
 field Inkproof.Demo.TheoremEntry.name : Inkproof.Demo.TheoremEntry → String
 field Inkproof.Demo.TheoremEntry.statement : Inkproof.Demo.TheoremEntry → String
 field Inkproof.Demo.TheoremEntry.url : Inkproof.Demo.TheoremEntry → String
+def Inkproof.Demo.TileRead.decodeTile : ByteArray → List (Option (Option (Int × Int)))
+theorem Inkproof.Demo.TileRead.getElem_decodeTile : ∀ (bs : ByteArray) (i : Nat) (h : i < (Inkproof.Demo.TileRead.decodeTile bs).length), (Inkproof.Demo.TileRead.decodeTile bs)[i] = Inkproof.Demo.Tiles.decodeNode (List.take 4 (List.drop (4 * i) bs.toList))
+theorem Inkproof.Demo.TileRead.length_decodeTile : ∀ (bs : ByteArray), (Inkproof.Demo.TileRead.decodeTile bs).length = bs.size / 4
+def Inkproof.Demo.TileRead.levelFor : Nat → Nat → Nat
+theorem Inkproof.Demo.TileRead.lt_pow_levelFor : ∀ (span cols : Nat), Max.max 1 (span / cols) < 2 ^ (Inkproof.Demo.TileRead.levelFor span cols + 1)
+def Inkproof.Demo.TileRead.nodeRange : Nat → Nat → Nat → Nat × Nat
+theorem Inkproof.Demo.TileRead.nodeRange_covers : ∀ (level lo hi i : Nat), lo ≤ i → i < hi → (Inkproof.Demo.TileRead.nodeRange level lo hi).fst ≤ i / 2 ^ level ∧ i / 2 ^ level < (Inkproof.Demo.TileRead.nodeRange level lo hi).snd
+theorem Inkproof.Demo.TileRead.pow_levelFor_le : ∀ (span cols : Nat), 2 ^ Inkproof.Demo.TileRead.levelFor span cols ≤ Max.max 1 (span / cols)
+def Inkproof.Demo.TileRead.readLevel : Nat → Nat → Nat → Nat
+theorem Inkproof.Demo.TileRead.readLevel_eq_of_le : ∀ {top span cols : Nat}, Inkproof.Demo.TileRead.levelFor span cols ≤ top → Inkproof.Demo.TileRead.readLevel top span cols = Inkproof.Demo.TileRead.levelFor span cols
+theorem Inkproof.Demo.TileRead.readLevel_eq_top_of_le : ∀ {top span cols : Nat}, top ≤ Inkproof.Demo.TileRead.levelFor span cols → Inkproof.Demo.TileRead.readLevel top span cols = top
+def Inkproof.Demo.TileRead.tileRange : Nat → Nat → Nat × Nat
+theorem Inkproof.Demo.TileRead.tileRange_covers : ∀ (a b j : Nat), a ≤ j → j < b → (Inkproof.Demo.TileRead.tileRange a b).fst ≤ j / Inkproof.Demo.Tiles.tileSize ∧ j / Inkproof.Demo.Tiles.tileSize < (Inkproof.Demo.TileRead.tileRange a b).snd
 def Inkproof.Demo.Tiles.chunkLevels : Nat → Array (Option Int) → Array (Array Inkproof.Demo.Seismic.Extent)
 theorem Inkproof.Demo.Tiles.chunkLevels_eq : ∀ (j : Nat) (xs : Array (Option Int)), Inkproof.Demo.Tiles.chunkLevels j xs = (Inkproof.Core.Pyramid.ofMeasure 2 ⋯ Inkproof.Demo.Seismic.extent xs).levels.extract 0 (j + 1)
 def Inkproof.Demo.Tiles.decodeNode : List UInt8 → Option (Option (Int × Int))
