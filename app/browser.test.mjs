@@ -170,3 +170,28 @@ test('first draw and longest frame interval with eight linked charts do not regr
   assert.ok(longest <= baseline.longestFrameMs * tolerance, `longest frame interval ${longest} ms against baseline ${baseline.longestFrameMs}`);
   await page.close();
 });
+
+test('a tile that fails to load is labelled and logged at warn, not drawn as an outage', async () => {
+  const page = await browser.newPage();
+  const warnings = [];
+  page.on('console', m => { if (m.type() === 'warning') warnings.push(m.text()); });
+  await page.route('**/tiles/**', route => route.abort());
+  await page.addInitScript(() => {
+    window.draws = 0;
+    document.addEventListener('inkproof-draw', () => { window.draws += 1; });
+  });
+  await page.goto(base);
+  await page.waitForFunction(() => window.draws > 0);
+  // Station 3 never has an outage, so any ink in its track beyond the trace is the failure label.
+  const dark = await page.evaluate(() => {
+    const c = document.querySelector('#stack').shadowRoot.querySelector('canvas');
+    const h = c.height / 4;
+    const d = c.getContext('2d').getImageData(0, 2 * h, c.width, h).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] < 200 || d[i + 1] < 200 || d[i + 2] < 200) n += 1;
+    return n;
+  });
+  assert.ok(dark > 0, 'the failed track carries a label');
+  assert.ok(warnings.some(w => w.includes('tile fetch failed')), `warnings: ${warnings}`);
+  await page.close();
+});
