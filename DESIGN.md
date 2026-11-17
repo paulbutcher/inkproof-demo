@@ -14,7 +14,7 @@
 
 ## Drawing
 
-`Inkproof.Demo.Draw` is a native module that does not import Lasm. `frame` turns a Scene display list into the wire commands a Web chart element runs: clear, build and use the renderer's program, then Gpu's `compile` over one tile whose grid is device pixels from the top left, with Gpu's `tessellate` for the vertex words. `bytes` is its encoding, the `commands` of a Web `Scene`. Tested that every quake marker is one draw and that a frame survives the wire.
+`Inkproof.Demo.Draw` is a native module that does not import Lasm. `bytes` is the wire encoding of Gpu's `frame` (setup, then `compile` over one tile whose grid is device pixels from the top left, with Gpu's `tessellate` for the vertex words) on a white target, the `commands` of a Web `Scene`. Tested that every quake marker is one draw.
 
 `Inkproof.Demo.Plot` is a native module that does not import Lasm. `traces` turns each station's drawn runs (`Stack.drawn`) into one Scene `envelope` per station in its own track, with an `Item.gap` between runs so an outage is never bridged, and `quakes` turns the quakes in view into markers, so the chart element draws the same picture the SVG outlines show. `src` and `parseSrc` carry the visible sample range through a chart element's `src` attribute.
 

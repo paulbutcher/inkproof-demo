@@ -143,7 +143,7 @@ def sceneOf (manifest : IO.Ref (Option Manifest)) (catalogue : IO.Ref (Option (A
     labels := labels.push { text := "catalogue failed to load", x := 8, y := Float.ofNat chartHeight - 6, color := "#b00020" }
     pure #[]
   let list := Plot.traces tracePaint qs r chartCols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
-  return { commands := Draw.bytes 0xffffffff chartCols (trackHeight * stations) list, labels }
+  return { commands := Draw.bytes chartCols (trackHeight * stations) list, labels }
 
 def linkedCharts : Nat := 8
 

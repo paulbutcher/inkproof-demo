@@ -17,7 +17,7 @@ require «inkproof-export» from git "https://github.com/paulbutcher/inkproof-ex
 require «inkproof-viewport» from git "https://github.com/paulbutcher/inkproof-viewport" @ "v0.4.1"
 require «inkproof-scene» from git "https://github.com/paulbutcher/inkproof-scene" @ "v0.7.1"
 require «inkproof-core» from git "https://github.com/paulbutcher/inkproof-core" @ "v0.11.0"
-require «inkproof-gpu» from git "https://github.com/paulbutcher/inkproof-gpu" @ "v0.5.1"
+require «inkproof-gpu» from git "https://github.com/paulbutcher/inkproof-gpu" @ "v0.6.0"
 require «inkproof-tools» from git "https://github.com/paulbutcher/inkproof-tools" @ "v0.3.0"
 
 @[default_target]

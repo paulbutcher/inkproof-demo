@@ -360,7 +360,7 @@ private def drawTest : Except String Unit := do
     let (qs, _) := (List.range n).foldl (fun (acc, s) i =>
       let (m, s) := Rng.below s 10
       (acc.push ⟨i * 7 + 3, m⟩, s)) ((#[] : Array Seismic.Quake), s)
-    let cmds := Draw.frame 0xffffffff 400 200 (Seismic.markers style proj qs)
+    let cmds := (Inkproof.Gpu.frame (Inkproof.Gpu.tessellate ⟨0, 0⟩) {} true 400 200 (Seismic.markers style proj qs) ⟨255, 255, 255, 255⟩).2
     let draws := cmds.filter (·.op == 5)
     check (draws.length == n) s!"seed {seed}: {draws.length} draws for {n} quakes"
 
