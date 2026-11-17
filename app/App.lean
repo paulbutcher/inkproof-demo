@@ -37,11 +37,11 @@ inductive Msg
   | panLeft
   | panRight
 
-def quakes : Array Seismic.Quake := #[⟨100, 3⟩, ⟨1000, 5⟩, ⟨2048, 4⟩, ⟨2049, 6⟩, ⟨3700, 7⟩]
-
 def series : List Inkproof.Scene.Pt := Series.samples 200 20
 
 def manifestUrl : String := "tiles/manifest.json"
+
+def catalogueUrl : String := "tiles/catalogue.json"
 
 def update : Msg → Model → Model × Cmd Msg
   | .manifest (.ok body), m =>
@@ -111,7 +111,21 @@ def loadManifest (ref : IO.Ref (Option Manifest)) : Lasm.JS.Async Manifest := do
   ref.set (some mf)
   return mf
 
-def sceneOf (manifest : IO.Ref (Option Manifest)) (cache : TileCache) (src : String) : Lasm.JS.Async Scene := do
+def loadCatalogue (ref : IO.Ref (Option (Array Seismic.Quake))) : Lasm.JS.Async (Array Seismic.Quake) := do
+  if let some qs := (← ref.get) then return qs
+  let resp ← try Lasm.JS.Web.fetch (.usvString catalogueUrl) catch e =>
+    log .warn "catalogue fetch failed" [("url", catalogueUrl), ("error", toString e)]
+    throw e
+  unless ← resp.ok do
+    log .warn "catalogue fetch failed" [("url", catalogueUrl), ("status", toString (← resp.status))]
+    throw (IO.userError s!"{catalogueUrl} not available")
+  let some qs := Catalogue.parseJson (← resp.text) | do
+    log .warn "catalogue is malformed" [("url", catalogueUrl)]
+    throw (IO.userError s!"{catalogueUrl} is malformed")
+  ref.set (some qs)
+  return qs
+
+def sceneOf (manifest : IO.Ref (Option Manifest)) (catalogue : IO.Ref (Option (Array Seismic.Quake))) (cache : TileCache) (src : String) : Lasm.JS.Async Scene := do
   let some r := Plot.parseSrc src | throw (IO.userError s!"not a sample range: {src}")
   let mf ← loadManifest manifest
   let stations := mf.stations.size
@@ -124,6 +138,10 @@ def sceneOf (manifest : IO.Ref (Option Manifest)) (cache : TileCache) (src : Str
       -- The failure is already logged; an empty track would read as an outage, so say what happened.
       qs := qs.push fun _ _ => (⟨none⟩, ⟨none⟩)
       labels := labels.push { text := s!"station {s + 1}: tiles failed to load", x := 8, y := 14 + Float.ofNat (s * chartHeight / stations), color := "#b00020" }
+  -- A catalogue that failed to load is logged and labelled, never drawn as a quiet period.
+  let quakes ← try loadCatalogue catalogue catch _ =>
+    labels := labels.push { text := "catalogue failed to load", x := 8, y := Float.ofNat chartHeight - 6, color := "#b00020" }
+    pure #[]
   let list := Plot.traces tracePaint qs r chartCols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
   return { commands := Draw.bytes 0xffffffff chartCols (trackHeight * stations) list, labels }
 
@@ -162,6 +180,7 @@ def view (m : Model) : Html Msg :=
 def main : IO Unit := do
   let cache ← IO.mkRef {}
   let manifest ← IO.mkRef none
-  register "inkproof-chart" (sceneOf manifest cache)
+  let catalogue ← IO.mkRef none
+  register "inkproof-chart" (sceneOf manifest catalogue cache)
   let app : App Unit Model Msg := App.element (fun _ => ({}, Http.get manifestUrl .manifest)) update view
   App.run app

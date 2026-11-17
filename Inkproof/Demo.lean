@@ -16,6 +16,7 @@ import Inkproof.Demo.Tiles
 import Inkproof.Demo.TileRead
 import Inkproof.Demo.Loaded
 import Inkproof.Demo.Manifest
+import Inkproof.Demo.Catalogue
 import Inkproof.Demo.View
 import Inkproof.Demo.Series
 

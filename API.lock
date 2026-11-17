@@ -3,6 +3,28 @@ theorem Inkproof.Demo.Bound.micro_eq : ∀ (q : Rat), Inkproof.Demo.Bound.micro 
 def Inkproof.Demo.Bound.pixelError : Inkproof.Demo.View.Range → Nat → Nat → Rat
 theorem Inkproof.Demo.Bound.pixelError_eq : ∀ (r : Inkproof.Demo.View.Range) (cols t : Nat), Inkproof.Demo.Bound.pixelError r cols t = ((↑cols / ↑r.width * (↑t - ↑r.lo)).abs + (↑cols / ↑r.width * ↑r.lo).abs + (-(↑cols / ↑r.width * ↑r.lo)).abs) / 2 ^ 50
 def Inkproof.Demo.Bound.theoremName : String
+structure Inkproof.Demo.Catalogue.Origin : Type
+field Inkproof.Demo.Catalogue.Origin.day : Inkproof.Demo.Catalogue.Origin → Nat
+constructor Inkproof.Demo.Catalogue.Origin.mk : Nat → Nat → Nat → Inkproof.Demo.Catalogue.Origin
+def Inkproof.Demo.Catalogue.Origin.parse : String → Option Inkproof.Demo.Catalogue.Origin
+field Inkproof.Demo.Catalogue.Origin.rate : Inkproof.Demo.Catalogue.Origin → Nat
+def Inkproof.Demo.Catalogue.Origin.toJson : Inkproof.Demo.Catalogue.Origin → String
+theorem Inkproof.Demo.Catalogue.Origin.toJson_eq : ∀ (o : Inkproof.Demo.Catalogue.Origin), o.toJson = ToString.toString "{\"year\":" ++ ToString.toString o.year ++ ToString.toString ",\"day\":" ++ ToString.toString o.day ++ ToString.toString ",\"rate\":" ++ ToString.toString o.rate ++ ToString.toString "}"
+field Inkproof.Demo.Catalogue.Origin.year : Inkproof.Demo.Catalogue.Origin → Nat
+def Inkproof.Demo.Catalogue.daysFromCivil : Int → Int → Int → Int
+theorem Inkproof.Demo.Catalogue.daysFromCivil_epoch : Inkproof.Demo.Catalogue.daysFromCivil 1970 1 1 = 0
+theorem Inkproof.Demo.Catalogue.daysFromCivil_next_day : ∀ (y m d : Int), Inkproof.Demo.Catalogue.daysFromCivil y m (d + 1) = Inkproof.Demo.Catalogue.daysFromCivil y m d + 1
+instance Inkproof.Demo.Catalogue.instBEqOrigin : BEq Inkproof.Demo.Catalogue.Origin
+def Inkproof.Demo.Catalogue.instBEqOrigin.beq : Inkproof.Demo.Catalogue.Origin → Inkproof.Demo.Catalogue.Origin → Bool
+instance Inkproof.Demo.Catalogue.instReprOrigin : Repr Inkproof.Demo.Catalogue.Origin
+def Inkproof.Demo.Catalogue.instReprOrigin.repr : Inkproof.Demo.Catalogue.Origin → Nat → Std.Format
+def Inkproof.Demo.Catalogue.parseCsv : Inkproof.Demo.Catalogue.Origin → String → Option (Array Inkproof.Demo.Seismic.Quake)
+def Inkproof.Demo.Catalogue.parseJson : String → Option (Array Inkproof.Demo.Seismic.Quake)
+def Inkproof.Demo.Catalogue.sampleOf : Inkproof.Demo.Catalogue.Origin → String → Option Nat
+def Inkproof.Demo.Catalogue.tenths : String → Option Nat
+def Inkproof.Demo.Catalogue.toJson : Array Inkproof.Demo.Seismic.Quake → String
+theorem Inkproof.Demo.Catalogue.toJson_empty : Inkproof.Demo.Catalogue.toJson #[] = "[]"
+theorem Inkproof.Demo.Catalogue.toJson_eq : ∀ (qs : Array Inkproof.Demo.Seismic.Quake), Inkproof.Demo.Catalogue.toJson qs = "[" ++ ",".intercalate (List.map (fun q => ToString.toString "[" ++ ToString.toString q.time ++ ToString.toString "," ++ ToString.toString q.magnitude ++ ToString.toString "]") qs.toList) ++ "]"
 structure Inkproof.Demo.CodeFile : Type
 field Inkproof.Demo.CodeFile.kind : Inkproof.Demo.CodeFile → Inkproof.Demo.CodeKind
 field Inkproof.Demo.CodeFile.lines : Inkproof.Demo.CodeFile → Nat

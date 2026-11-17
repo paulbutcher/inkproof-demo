@@ -39,3 +39,7 @@ lean_exe «build-tiles» where
 lean_exe «build-real-tiles» where
   root := `BuildRealTilesMain
   srcDir := "gen"
+
+lean_exe «build-catalogue» where
+  root := `BuildCatalogueMain
+  srcDir := "gen"

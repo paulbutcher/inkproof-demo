@@ -247,6 +247,23 @@ private def manifestTest : Except String Unit := do
   check (Manifest.parse "{\"tileSize\":256}" == none) "a manifest with no stations is refused"
   check (Manifest.parse "not json" == none) "text that is not JSON is refused"
 
+private def catalogueTest : Except String Unit := do
+  let o : Catalogue.Origin := ⟨2025, 60, 20⟩
+  check (Catalogue.Origin.parse o.toJson == some o) "origin round trip"
+  -- 2025-03-01 is day 60 of 2025, the origin; 2025-03-02 is one day on.
+  check (Catalogue.sampleOf o "2025-03-01T00:00:00.000Z" == some 0) "origin time is sample 0"
+  check (Catalogue.sampleOf o "2025-03-02T01:02:03.456Z" == some ((86400 + 3723) * 20)) "a day and 1:02:03 on"
+  check (Catalogue.sampleOf o "2025-02-28T23:59:59.000Z" == none) "before the recording is dropped"
+  check (Catalogue.sampleOf ⟨2024, 366, 20⟩ "2025-01-01T00:00:10.000Z" == some (86410 * 20)) "the year rolls over"
+  check (Catalogue.sampleOf o "garbage" == none) "malformed time is refused"
+  check (Catalogue.tenths "5.67" == some 56 && Catalogue.tenths "6" == some 60 && Catalogue.tenths "x" == none) "magnitudes in tenths"
+  let csv := "time,latitude,longitude,depth,mag,magType\n2025-03-01T00:00:01.000Z,1,2,3,5.6,mww\n2025-02-01T00:00:00.000Z,1,2,3,6.0,mww\nbad,1,2,3,6.0,mww\n2025-03-03T00:00:00.000Z,1,2,3,7.1,mww\n"
+  let some qs := Catalogue.parseCsv o csv | throw "csv is not read"
+  check (qs.map (fun q => (q.time, q.magnitude)) == #[(20, 56), (2 * 86400 * 20, 71)]) s!"rows in and out of the recording: {qs.map (·.time)}"
+  check (Catalogue.parseCsv o "a,b\n1,2").isNone "csv without time and mag is refused"
+  check ((Catalogue.parseJson (Catalogue.toJson qs)).map (·.map fun q => (q.time, q.magnitude)) == some (qs.map fun q => (q.time, q.magnitude))) "catalogue json round trip"
+  check (Catalogue.parseJson "{}").isNone "non-array json is refused"
+
 private def drawTest : Except String Unit := do
   let style : Inkproof.Scene.ScatterStyle := ⟨⟨1, ⟨200, 30, 30, 255⟩⟩, .circle, 4⟩
   let proj : Inkproof.Scene.Projection Nat Nat := ⟨fun t => (t : Rat) / 10, fun m => 100 - (m : Rat) * 5⟩
@@ -352,5 +369,5 @@ private def rawTest : Except String Unit := do
 def main (args : List String) : IO UInt32 := do
   let real ← IO.FS.readBinFile "fixtures/IU.ANMO.00.HHZ.excerpt.mseed"
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"loaded tiles", loadedTest⟩, ⟨"manifest", manifestTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"loaded tiles", loadedTest⟩, ⟨"manifest", manifestTest⟩, ⟨"catalogue", catalogueTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩,
     platformTest (args.contains "--expect-wasm")]

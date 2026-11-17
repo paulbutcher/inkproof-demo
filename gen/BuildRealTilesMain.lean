@@ -2,6 +2,7 @@
 Copyright (c) 2026 Paul Butcher. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 -/
+import Inkproof.Demo.Catalogue
 import Inkproof.Demo.Place
 import Inkproof.Demo.Tiles
 
@@ -75,5 +76,9 @@ def main (args : List String) : IO UInt32 := do
   let low := (List.range' coarseLevel (joinLevel + 1 - coarseLevel)).map fun k => (n + 2 ^ k - 1) / 2 ^ k
   let high := (upper.levels.toList.drop 1).map (·.size)
   IO.FS.writeFile (out ++ "/manifest.json") (Tiles.manifestOfSizes coarseLevel #[(low ++ high).toArray])
+  if let some file := (← dayFiles data)[0]? then
+    let rs ← IO.ofExcept (MiniSeed.decodeFile (← IO.FS.readBinFile file))
+    if let some r := rs[0]? then
+      IO.FS.writeFile (out / "recording.json") (Catalogue.Origin.toJson ⟨r.year, r.day, Int.toNat r.factor⟩)
   IO.println s!"{n} samples, {← gaps.get} in gaps, counts divided by {d}"
   return 0

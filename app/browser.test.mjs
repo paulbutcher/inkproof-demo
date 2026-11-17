@@ -195,3 +195,18 @@ test('a tile that fails to load is labelled and logged at warn, not drawn as an 
   assert.ok(warnings.some(w => w.includes('tile fetch failed')), `warnings: ${warnings}`);
   await page.close();
 });
+
+test('a catalogue that fails to load is logged at warn and labelled, not drawn as a quiet period', async () => {
+  const page = await browser.newPage();
+  const warnings = [];
+  page.on('console', m => { if (m.type() === 'warning') warnings.push(m.text()); });
+  await page.route('**/tiles/catalogue.json', route => route.abort());
+  await page.addInitScript(() => {
+    window.draws = 0;
+    document.addEventListener('inkproof-draw', () => { window.draws += 1; });
+  });
+  await page.goto(base);
+  await page.waitForFunction(() => window.draws > 0);
+  assert.ok(warnings.some(w => w.includes('catalogue fetch failed')), `warnings: ${warnings}`);
+  await page.close();
+});
