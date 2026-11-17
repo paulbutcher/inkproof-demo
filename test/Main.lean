@@ -194,11 +194,11 @@ theorem Seismic.catalogue_points (qs : Array Seismic.Quake) :
 private def stackTest : Except String Unit := do
   let st : Seismic.Station := { seed := 3, outages := [(10, 20), (40, 45)] }
   let n := 60
-  let ts := Stack.traces (st.pyramid n) 0 n n 200 1000
+  let ts := Stack.traces (st.pyramid n).query 0 n n 200 1000
   check (ts.length == 3) s!"two outages split the trace into three, got {ts.length}"
   let up := (List.range n).filter fun i => !st.down i
   check ((ts.map fun t => (t.splitOn " ").length).sum == 2 * up.length) "every recorded column is drawn, no outage column is"
-  let coarse := Stack.traces (st.pyramid n) 0 n 6 200 1000
+  let coarse := Stack.traces (st.pyramid n).query 0 n 6 200 1000
   check (coarse.length == 2) s!"only the column wholly inside an outage is a gap, got {coarse.length} runs"
 
 private def tilesTest : Except String Unit := do
@@ -232,7 +232,7 @@ private def plotTest : Except String Unit := do
     let r : View.Range := ⟨lo, hi⟩
     check ((Plot.parseSrc (Plot.src r)).map (fun r => (r.lo, r.hi)) == some (lo, hi)) s!"{lo}-{hi}: src round trip"
     let gaps (items : List (Inkproof.Scene.Item Inkproof.Scene.Column)) := (items.filter fun | .gap => true | _ => false).length
-    let g := Stack.drawn p lo hi 60
+    let g := Stack.drawn p.query lo hi 60
     check (gaps (Plot.items 0 100 1000 g) + 1 == g.numSegments || g.numSegments == 0) s!"{lo}-{hi}: one gap between runs"
   check (Plot.parseSrc "7" == none && Plot.parseSrc "a-3" == none) "malformed src is rejected"
 

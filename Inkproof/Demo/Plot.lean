@@ -30,19 +30,19 @@ theorem items_eq (y0 height top : Nat) (g : Segmented Nat (Int × Int)) :
       seg.points.toList.filterMap fun (x, v) => v.map fun v => Item.val (column y0 height top x v)) := rfl
 
 /-- The stacked stations over samples `r` in `cols` pixel columns, each track `height` pixels tall. -/
-def traces (paint : Paint) (ps : Array (Pyramid Extent)) (r : Range) (cols height top : Nat) : DisplayList :=
-  ps.zipIdx.map fun (p, i) =>
-    ⟨paint.layer, paint.color, .envelope (items (i * height) height top (Stack.drawn p r.lo r.hi cols))⟩
+def traces (paint : Paint) (qs : Array (Nat → Nat → Extent)) (r : Range) (cols height top : Nat) : DisplayList :=
+  qs.zipIdx.map fun (q, i) =>
+    ⟨paint.layer, paint.color, .envelope (items (i * height) height top (Stack.drawn q r.lo r.hi cols))⟩
 
-theorem size_traces (paint : Paint) (ps : Array (Pyramid Extent)) (r : Range) (cols height top : Nat) :
-    (traces paint ps r cols height top).size = ps.size := by
+theorem size_traces (paint : Paint) (qs : Array (Nat → Nat → Extent)) (r : Range) (cols height top : Nat) :
+    (traces paint qs r cols height top).size = qs.size := by
   simp [traces]
 
-theorem traces_getElem (paint : Paint) (ps : Array (Pyramid Extent)) (r : Range) (cols height top i : Nat)
-    (h : i < (traces paint ps r cols height top).size) :
-    (traces paint ps r cols height top)[i] =
+theorem traces_getElem (paint : Paint) (qs : Array (Nat → Nat → Extent)) (r : Range) (cols height top i : Nat)
+    (h : i < (traces paint qs r cols height top).size) :
+    (traces paint qs r cols height top)[i] =
       ⟨paint.layer, paint.color, .envelope (items (i * height) height top
-        (Stack.drawn (ps[i]'(by simpa [size_traces] using h)) r.lo r.hi cols))⟩ := by
+        (Stack.drawn (qs[i]'(by simpa [size_traces] using h)) r.lo r.hi cols))⟩ := by
   simp [traces]
 
 /-- The quakes in `r` as markers in the top row of a chart `cols` columns wide. -/

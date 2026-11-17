@@ -57,7 +57,7 @@ def quakeStyle : Inkproof.Scene.ScatterStyle := ⟨⟨1, ⟨220, 20, 60, 255⟩�
 
 def sceneOf (src : String) : Lasm.JS.Async Scene := do
   let some r := Plot.parseSrc src | throw (IO.userError s!"not a sample range: {src}")
-  let list := Plot.traces tracePaint pyramids r chartCols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
+  let list := Plot.traces tracePaint (pyramids.map (·.query)) r chartCols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
   return { commands := Draw.bytes 0xffffffff chartCols (trackHeight * stations.size) list }
 
 def linkedCharts : Nat := 8
