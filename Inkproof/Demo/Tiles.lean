@@ -89,6 +89,45 @@ def chunkLevels (j : Nat) (xs : Array (Option Int)) : Array (Array Extent) :=
 theorem chunkLevels_eq (j : Nat) (xs : Array (Option Int)) :
     chunkLevels j xs = (Pyramid.ofMeasure 2 (by omega) Seismic.extent xs).levels.extract 0 (j + 1) := rfl
 
+/-- A sample as one little-endian 16-bit word, the gap word for a sample not recorded. -/
+def rawSample (x : Option Int) : List UInt8 :=
+  let w := encodeWord (x.getD gapWord)
+  [(w % 256).toUInt8, (w / 256).toUInt8]
+
+def rawBytes (xs : Array (Option Int)) : ByteArray :=
+  ⟨(xs.toList.flatMap rawSample).toArray⟩
+
+theorem rawBytes_data (xs : Array (Option Int)) : (rawBytes xs).data.toList = xs.toList.flatMap rawSample := by
+  simp [rawBytes]
+
+theorem rawSample_decode (x : Option Int) (h : ∀ v, x = some v → -32767 ≤ v ∧ v < 32768) :
+    (match rawSample x with
+      | [lo, hi] => some (decodeWord (lo.toNat + 256 * hi.toNat))
+      | _ => none) = some (x.getD gapWord) := by
+  have hw : ∀ v : Int, -32768 ≤ v → v < 32768 → encodeWord v < 65536 := by
+    intro v h1 h2; unfold encodeWord; omega
+  cases x with
+  | none =>
+    simp only [rawSample, Option.getD_none]
+    rw [toNat_bytes _ (hw _ (by simp [gapWord]) (by simp [gapWord])),
+      decodeWord_encodeWord _ (by simp [gapWord]) (by simp [gapWord])]
+  | some v =>
+    have := h v rfl
+    simp only [rawSample, Option.getD_some]
+    rw [toNat_bytes _ (hw _ (by omega) (by omega)), decodeWord_encodeWord _ (by omega) (by omega)]
+
+theorem rawBytes_size (xs : Array (Option Int)) : (rawBytes xs).size = 2 * xs.size := by
+  unfold rawBytes
+  have h : ∀ l : List (Option Int), (l.flatMap rawSample).length = 2 * l.length := by
+    intro l
+    induction l with
+    | nil => simp
+    | cons x xs ih => simp [rawSample, ih]; omega
+  simp [ByteArray.size, h]
+
+/-- The path of the raw samples of day `d` of station `s`. A format string with no computation, so there is no theorem to state. -/
+def rawPath (s d : Nat) : String := s!"s{s}/raw/d{d}.bin"
+
 /-- The path of tile `j` of level `k` of station `s`. -/
 def tilePath (s k j : Nat) : String := s!"s{s}/l{k}/t{j}.bin"
 
@@ -111,12 +150,12 @@ theorem stationTiles_size (s : Nat) (p : Pyramid Extent) :
   | nil => simp
   | cons x xs ih => simp [List.zipIdx_cons, ih]
 
-/-- A description of the tile set for the browser: station count, then per station the node count of each level. No theorem: the string is JSON built by concatenation, and a statement about it needs a JSON parser the demo does not have. -/
-def manifestOfSizes (sizes : Array (Array Nat)) : String :=
-  s!"\{\"tileSize\":{tileSize},\"stations\":[" ++
+/-- A description of the tile set for the browser: the first level written (finer ones are read from the raw samples), then per station the node count of each level from there. No theorem: the string is JSON built by concatenation, and a statement about it needs a JSON parser the demo does not have. -/
+def manifestOfSizes (firstLevel : Nat) (sizes : Array (Array Nat)) : String :=
+  s!"\{\"tileSize\":{tileSize},\"firstLevel\":{firstLevel},\"stations\":[" ++
     ",".intercalate (sizes.toList.map fun ls => "[" ++ ",".intercalate (ls.toList.map toString) ++ "]") ++ "]}"
 
 def manifest (ps : Array (Pyramid Extent)) : String :=
-  manifestOfSizes (ps.map fun p => p.levels.map (·.size))
+  manifestOfSizes 0 (ps.map fun p => p.levels.map (·.size))
 
 end Inkproof.Demo.Tiles

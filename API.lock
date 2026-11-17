@@ -232,7 +232,13 @@ theorem Inkproof.Demo.Tiles.encodeNode_length : ∀ (e : Inkproof.Demo.Seismic.E
 def Inkproof.Demo.Tiles.encodeWord : Int → Nat
 def Inkproof.Demo.Tiles.gapWord : Int
 def Inkproof.Demo.Tiles.manifest : Array (Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent) → String
-def Inkproof.Demo.Tiles.manifestOfSizes : Array (Array Nat) → String
+def Inkproof.Demo.Tiles.manifestOfSizes : Nat → Array (Array Nat) → String
+def Inkproof.Demo.Tiles.rawBytes : Array (Option Int) → ByteArray
+theorem Inkproof.Demo.Tiles.rawBytes_data : ∀ (xs : Array (Option Int)), (Inkproof.Demo.Tiles.rawBytes xs).data.toList = List.flatMap Inkproof.Demo.Tiles.rawSample xs.toList
+theorem Inkproof.Demo.Tiles.rawBytes_size : ∀ (xs : Array (Option Int)), (Inkproof.Demo.Tiles.rawBytes xs).size = 2 * xs.size
+def Inkproof.Demo.Tiles.rawPath : Nat → Nat → String
+def Inkproof.Demo.Tiles.rawSample : Option Int → List UInt8
+theorem Inkproof.Demo.Tiles.rawSample_decode : ∀ (x : Option Int), (∀ (v : Int), x = Option.some v → -32767 ≤ v ∧ v < 32768) → (match Inkproof.Demo.Tiles.rawSample x with | [lo, hi] => Option.some (Inkproof.Demo.Tiles.decodeWord (lo.toNat + 256 * hi.toNat)) | x => Option.none) = Option.some (x.getD Inkproof.Demo.Tiles.gapWord)
 def Inkproof.Demo.Tiles.stationTiles : Nat → Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent → Array (String × ByteArray)
 theorem Inkproof.Demo.Tiles.stationTiles_size : ∀ (s : Nat) (p : Inkproof.Core.Pyramid Inkproof.Demo.Seismic.Extent), (Inkproof.Demo.Tiles.stationTiles s p).size = (List.map Inkproof.Demo.Tiles.tileCount p.levels.toList).sum
 def Inkproof.Demo.Tiles.tileBytes : Array Inkproof.Demo.Seismic.Extent → Nat → ByteArray

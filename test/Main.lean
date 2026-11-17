@@ -305,8 +305,16 @@ private def chunkedTest : Except String Unit := do
   for k in List.range upper.size do
     check (bytes (upper[k]?.getD #[]) == bytes (whole[k + 2]?.getD #[])) s!"upper level {k} above the join"
 
+private def rawTest : Except String Unit := do
+  let xs : Array (Option Int) := #[some 5, none, some (-32767), some 32767, some 0]
+  let bs := (Tiles.rawBytes xs).data.toList
+  let back := (List.range xs.size).map fun i =>
+    let v := Tiles.decodeWord ((bs.getD (2 * i) 0).toNat + 256 * (bs.getD (2 * i + 1) 0).toNat)
+    if v == Tiles.gapWord then none else some v
+  check (back == xs.toList) "raw samples round trip, a gap as the gap word"
+
 def main (args : List String) : IO UInt32 := do
   let real ← IO.FS.readBinFile "fixtures/IU.ANMO.00.HHZ.excerpt.mseed"
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩,
     platformTest (args.contains "--expect-wasm")]
