@@ -47,3 +47,11 @@ Three separate steps, none of them part of `lake build`. `scripts/fetch.mjs` (No
 ## Scale and the quarter test
 
 `Stack.peak` is the largest magnitude among a track's columns (`le_peak`), and `Plot.traces` takes one such top for each station, so a track shows its own traces whatever the recording's amplitude. Real counts reach 32767 after scaling into 16 bits, and a fixed top left the trace far outside its track. `app/quarter.test.mjs` runs the built app against the real tile set named by `INKPROOF_SITE` and is skipped without it; it also fails on any warning logged while drawing, so a missing tile cannot pass as an outage or an empty chart.
+
+## Input robot
+
+`Inkproof.Demo.Robot` is a native module that does not import Lasm: `run` applies random actions (wheel, pinch, drag, keys, boxes, sets, resets, link toggles) to linked charts and reports the first broken property (a zoom limit, linked charts disagreeing on x, the cursor moving under a zoom, a chart that was not addressed changing). `lake test` runs 100 seeds natively; the browser app has a button that runs 20 seeds, one per message so the page stays responsive, and `app/browser.test.mjs` checks that it reports no violation.
+
+## Chart sources
+
+`Inkproof.Demo.Source` is a native module that does not import Lasm. Each chart in `app/App.lean` sits between a `-- chart: <name>` line and a `-- end chart` line; `regions` reads those lines (`regions_mem`: every line shown is a line of the file) and `lake exe build-sources` writes them as `chart-sources.json` beside the tiles, which the app fetches and shows under each chart, so the text shown is the text compiled. `lake test` fails if a chart's source passes 20 lines, not counting blanks. A chart takes its tile loading and failure labelling as arguments (`stackItems`), so its source shows only how the libraries are put together.

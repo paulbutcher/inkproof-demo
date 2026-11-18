@@ -18,5 +18,7 @@ import Inkproof.Demo.Manifest
 import Inkproof.Demo.Catalogue
 import Inkproof.Demo.View
 import Inkproof.Demo.Series
+import Inkproof.Demo.Robot
+import Inkproof.Demo.Source
 
 /-! # Inkproof.Demo -/

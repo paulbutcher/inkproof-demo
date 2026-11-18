@@ -35,6 +35,10 @@ script test do
     { cmd := "lake", args := #["exe", "build-tiles", (app / "web" / "public" / "tiles").toString], cwd := __dir__ / ".." }
   let code ← tiles.wait
   if code != 0 then return code
+  let sources ← IO.Process.spawn
+    { cmd := "lake", args := #["exe", "build-sources", (app / "App.lean").toString, (app / "web" / "public" / "chart-sources.json").toString], cwd := __dir__ / ".." }
+  let code ← sources.wait
+  if code != 0 then return code
   for (name, cmd, args) in #[("build", "npx", #["vite", "build"]), ("browser", "node", #["--test", "browser.test.mjs"])] do
     IO.println s!"== {name}"
     let child ← IO.Process.spawn { cmd, args, cwd := app, env := #[("LASM_EDITOR", some "0")] }

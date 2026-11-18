@@ -17,7 +17,8 @@ The public modules under `Inkproof/Demo/`, by job:
 - Draw a display list to GPU commands or raw pixels: `Draw.frame`, `Draw.tile`, `Draw.bytes`.
 - Compute the guaranteed pixel error bound shown in the app: `Bound.pixelError`.
 - Compare guaranteed and naive decimation and read a pixel column: `Inspect.inspect`, `Inspect.Decimation.apply`, `Series.points`.
-- Drive random pan and zoom against the linked-view invariants: `Robot.run`.
+- Drive random pan and zoom against the linked-view invariants, natively and in the page: `Robot.run`, `Robot.runSeed`.
+- Read the marked chart sources out of the app's Lean file for the page's source panel: `Source.regions`, `Source.toJson`, `Source.parse`.
 - List the proved guarantees and the trusted computing base for the page: `Library.html`, `Library.theorems`, `Inspect.guaranteeStatement`, `TcbRow`.
 - Find the file and line declaring a proved theorem in the library sources: `locate`, `declarationLine`.
 - Choose how the code panel labels a file: `CodeKind.ofNat`, `CodeKind.matches`.
@@ -30,7 +31,7 @@ The demo charts public seismic recordings and earthquakes. Fetching is a separat
 2. Build tiles: `lake exe build-real-tiles <miniSEED station dir> <output dir>` cuts one station's day files into tiles. Peak memory is about 560 MiB for one day, 580 MiB for a week and 0.9 to 1.2 GiB for each of the four stations over the 90 days (peak resident size), because it works in chunks of 2^20 samples and not the whole recording; it stops growing between a week and 20 days. A station takes two to eleven minutes and about 3 GB of tiles.
 3. Describe the tile set: `lake exe build-manifest <site dir> <station tile dir>...` writes the site's `manifest.json` from the stations' manifests and raw day files; link each station's `s0` as `<site dir>/s<i>`.
 4. Build the catalogue: `lake exe build-catalogue <data>/catalogue/<range>.csv <output dir>` writes `catalogue.json` next to the tiles, placing each quake on the tiles' sample grid from the `recording.json` that step 2 wrote. It holds the catalogue (a few thousand rows) in memory and nothing else.
-4. Serve: the static site from local disk.
+5. Serve: the static site from local disk.
 
 ## Looking at the quarter
 

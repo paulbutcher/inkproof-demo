@@ -51,3 +51,7 @@ lean_exe «build-catalogue» where
 lean_exe «build-manifest» where
   root := `BuildManifestMain
   srcDir := "gen"
+
+lean_exe «build-sources» where
+  root := `BuildSourcesMain
+  srcDir := "gen"

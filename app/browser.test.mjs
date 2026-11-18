@@ -210,3 +210,22 @@ test('a catalogue that fails to load is logged at warn and labelled, not drawn a
   assert.ok(warnings.some(w => w.includes('catalogue fetch failed')), `warnings: ${warnings}`);
   await page.close();
 });
+
+test('the input robot finds no violation in the page', async () => {
+  const page = await open();
+  await page.click('#robot-run');
+  await page.waitForFunction(() => /no violations|seed \d+: /.test(document.querySelector('#robot').textContent), null, { timeout: 120000 });
+  assert.match(await page.$eval('#robot', e => e.textContent), /no violations/);
+  await page.close();
+});
+
+test('each chart has its source in the page, read from the file the chart is compiled from', async () => {
+  const page = await open();
+  await page.waitForSelector('#sources details');
+  const text = await page.$eval('#sources', e => e.textContent);
+  assert.match(text, /Source of Seismic stack/);
+  assert.match(text, /def stackItems/);
+  assert.match(text, /Source of Decimated line/);
+  assert.match(text, /def lineChart/);
+  await page.close();
+});

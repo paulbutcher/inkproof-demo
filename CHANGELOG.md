@@ -4,6 +4,7 @@
 
 - Each station's track is scaled to the largest value in view.
 - The tiles above level 12 of a real recording are written correctly.
+- The input robot runs in the browser app under Lasm, one seed at a time, and is checked in the browser tests.
 
 ## v0.4.0
 

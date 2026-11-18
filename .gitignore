@@ -10,3 +10,4 @@
 /app/dist/
 /app/web/public/tiles/
 /data/
+/app/web/public/chart-sources.json

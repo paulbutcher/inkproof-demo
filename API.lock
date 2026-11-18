@@ -210,6 +210,19 @@ theorem Inkproof.Demo.Raw.size_decodeLeaves : ∀ (bs : ByteArray) (a : Array In
 def Inkproof.Demo.Raw.wordExtent : Nat → Inkproof.Demo.Seismic.Extent
 theorem Inkproof.Demo.Raw.wordExtent_encodeWord : ∀ (v : Int), -32768 < v → v < 32768 → Inkproof.Demo.Raw.wordExtent (Inkproof.Demo.Tiles.encodeWord v) = Inkproof.Demo.Seismic.extent (Option.some v)
 theorem Inkproof.Demo.Raw.wordExtent_gap : Inkproof.Demo.Raw.wordExtent (Inkproof.Demo.Tiles.encodeWord Inkproof.Demo.Tiles.gapWord) = ({ get := Option.none }, { get := Option.none })
+inductive Inkproof.Demo.Robot.Action : Nat → Type
+constructor Inkproof.Demo.Robot.Action.input : {n : Nat} → Fin n → Inkproof.Viewport.Input Float → Inkproof.Demo.Robot.Action n
+constructor Inkproof.Demo.Robot.Action.toggle : {n : Nat} → Fin n → Inkproof.Demo.Robot.Action n
+def Inkproof.Demo.Robot.action : (n : Nat) → 0 < n → InkproofTools.Test.Rng → Inkproof.Demo.Robot.Action n × InkproofTools.Test.Rng
+def Inkproof.Demo.Robot.config : Inkproof.Viewport.ViewConfig Float
+def Inkproof.Demo.Robot.home : Inkproof.Viewport.ViewConfig Float → (n : Nat) → Inkproof.Viewport.Linked Float n
+theorem Inkproof.Demo.Robot.home_view : ∀ (c : Inkproof.Viewport.ViewConfig Float) (n : Nat) (i : Fin n), (Inkproof.Demo.Robot.home c n).view i = Inkproof.Viewport.View.home c
+def Inkproof.Demo.Robot.run : Inkproof.Viewport.ViewConfig Float → Nat → Nat → Nat → Option String
+def Inkproof.Demo.Robot.run.go : Inkproof.Viewport.ViewConfig Float → (n : Nat) → Nat → 0 < n → Nat → InkproofTools.Test.Rng → Inkproof.Viewport.Linked Float n → Option String
+def Inkproof.Demo.Robot.runSeed : Nat → optParam Nat 1000 → Option String
+theorem Inkproof.Demo.Robot.runSeed_eq : ∀ (seed steps : Nat), Inkproof.Demo.Robot.runSeed seed steps = Option.map (fun e => ToString.toString "seed " ++ ToString.toString seed ++ ToString.toString ": " ++ ToString.toString e) (Inkproof.Demo.Robot.run Inkproof.Demo.Robot.config 4 seed steps)
+theorem Inkproof.Demo.Robot.run_no_charts : ∀ (c : Inkproof.Viewport.ViewConfig Float) (seed steps : Nat), Inkproof.Demo.Robot.run c 0 seed steps = Option.some "no charts to check"
+def Inkproof.Demo.Robot.violation : {n : Nat} → Inkproof.Viewport.ViewConfig Float → Inkproof.Viewport.Linked Float n → Inkproof.Viewport.Linked Float n → Inkproof.Demo.Robot.Action n → Option String
 def Inkproof.Demo.Seismic.Extent : Type
 structure Inkproof.Demo.Seismic.Quake : Type
 field Inkproof.Demo.Seismic.Quake.magnitude : Inkproof.Demo.Seismic.Quake → Nat
@@ -235,6 +248,20 @@ def Inkproof.Demo.Series.points : Inkproof.Demo.Inspect.Decimation → List Inkp
 theorem Inkproof.Demo.Series.points_toList : ∀ (d : Inkproof.Demo.Inspect.Decimation) (xs : List Inkproof.Scene.Pt) (height top : Nat), (Inkproof.Demo.Series.points d xs height top).toList = [' '].intercalate (List.map String.toList (Inkproof.Demo.Series.coords d xs height top))
 def Inkproof.Demo.Series.samples : Nat → Nat → List Inkproof.Scene.Pt
 theorem Inkproof.Demo.Series.samples_length : ∀ (columns perColumn : Nat), (Inkproof.Demo.Series.samples columns perColumn).length = columns * perColumn
+def Inkproof.Demo.Source.beginName : String → Option String
+theorem Inkproof.Demo.Source.beginName_eq : ∀ (line : String), Inkproof.Demo.Source.beginName line = if line.startsWith "-- chart: " = Bool.true then Option.some (line.drop 10).toString else Option.none
+def Inkproof.Demo.Source.endMarker : String
+def Inkproof.Demo.Source.go : Option (String × List String) → List String → List (String × List String)
+theorem Inkproof.Demo.Source.go_mem : ∀ (ls : List String) (cur : Option (String × List String)) (n : String) (b : List String), (n, b) ∈ Inkproof.Demo.Source.go cur ls → ∀ (x : String), x ∈ b → x ∈ ls ∨ ∃ n' acc, cur = Option.some (n', acc) ∧ x ∈ acc
+def Inkproof.Demo.Source.length : List String → Nat
+theorem Inkproof.Demo.Source.length_eq : ∀ (b : List String), Inkproof.Demo.Source.length b = (List.filter (fun l => l.any fun x => !x.isWhitespace) b).length
+def Inkproof.Demo.Source.parse : String → Option (List (String × String))
+def Inkproof.Demo.Source.regions : List String → List (String × List String)
+theorem Inkproof.Demo.Source.regions_mem : ∀ (lines : List String) (n : String) (b : List String), (n, b) ∈ Inkproof.Demo.Source.regions lines → ∀ (x : String), x ∈ b → x ∈ lines
+theorem Inkproof.Demo.Source.regions_nil : Inkproof.Demo.Source.regions [] = []
+theorem Inkproof.Demo.Source.regions_open : ∀ (n l : String) (ls : List String), Inkproof.Demo.Source.beginName l = Option.some n → Inkproof.Demo.Source.regions (l :: ls) = Inkproof.Demo.Source.go (Option.some (n, [])) ls
+def Inkproof.Demo.Source.toJson : String → String
+theorem Inkproof.Demo.Source.toJson_eq : ∀ (text : String), Inkproof.Demo.Source.toJson text = (Lean.Json.arr (List.map (fun x => match x with | (n, b) => Lean.Json.mkObj [("name", Lean.ToJson.toJson n), ("source", Lean.ToJson.toJson ("\n".intercalate b))]) (Inkproof.Demo.Source.regions (text.splitOn "\n"))).toArray).compress
 theorem Inkproof.Demo.Stack.le_peak : ∀ (cs : Array Inkproof.Demo.Seismic.Extent) (e : Inkproof.Demo.Seismic.Extent), e ∈ cs → ∀ (a b : Int), Inkproof.Demo.Stack.span e = Option.some (a, b) → a.natAbs ≤ Inkproof.Demo.Stack.peak cs ∧ b.natAbs ≤ Inkproof.Demo.Stack.peak cs
 theorem Inkproof.Demo.Stack.one_le_peak : ∀ (cs : Array Inkproof.Demo.Seismic.Extent), 1 ≤ Inkproof.Demo.Stack.peak cs
 def Inkproof.Demo.Stack.peak : Array Inkproof.Demo.Seismic.Extent → Nat

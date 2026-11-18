@@ -102,102 +102,10 @@ private def tcbTest : Except String Unit := do
   for k in [CodeKind.template, .generated, .shim] do
     check ((html.splitOn k.label).length > 1) s!"row for {k.label}"
 
-namespace Robot
-
-open Inkproof.Viewport
-
-/-- `n` charts that share an x axis, all linked. -/
-def home (c : ViewConfig Float) (n : Nat) : Linked Float n :=
-  { x := ⟨c.x.home⟩, y := fun _ => c.y.home }
-
-theorem home_view (c : ViewConfig Float) (n : Nat) (i : Fin n) :
-    (home c n).view i = View.home c := by simp [home, Linked.view, View.home]
-
-inductive Action (n : Nat) where
-  | input (i : Fin n) (inp : Input Float)
-  | toggle (i : Fin n)
-
-private def key (k : Nat) : Key :=
-  match k % 6 with
-  | 0 => .zoomIn | 1 => .zoomOut | 2 => .left | 3 => .right | 4 => .up | _ => .down
-
-/-- Inputs of every kind, including factors that are zero and boxes that are empty or inverted. -/
-def action (n : Nat) (hn : 0 < n) (s : Rng) : Action n × Rng :=
-  let (k, s) := Rng.below s 10
-  let (i, s) := Rng.below s n
-  let (a, s) := Rng.below s 801
-  let (b, s) := Rng.below s 401
-  let (c, s) := Rng.below s 801
-  let (d, s) := Rng.below s 401
-  let i : Fin n := ⟨i % n, Nat.mod_lt _ hn⟩
-  let a := a.toFloat
-  let b := b.toFloat
-  let c := c.toFloat
-  let d := d.toFloat
-  (match k with
-   | 0 | 1 => .input i (.wheel a b (c / 200))
-   | 2 => .input i (.pinch a b (c / 200) (d / 100))
-   | 3 | 4 => .input i (.drag (a - 400) (b - 200))
-   | 5 => .input i (.key (key (c.toUInt64.toNat)))
-   | 6 => .input i (.box a b c d)
-   | 7 => .toggle i
-   | 8 => .input i (.set (a - 400) (c - 400) (b - 200) (d - 200))
-   | _ => .input i .reset, s)
-
-private def within (c : Interval.Config Float) (a : Interval Float) : Bool :=
-  c.minSpan ≤ a.span && a.span ≤ c.maxSpan
-
-/-- The first broken property after `a` takes `r` to `r'`: a limit, a link, a cursor, or a chart
-other than the one acted on moving, or unlinking one changing what it shows. -/
-def violation {n : Nat} (c : ViewConfig Float) (r r' : Linked Float n) (a : Action n) : Option String :=
-  let views := List.finRange n
-  let limits := views.any fun j => !(within c.x (r'.view j).x && within c.y (r'.view j).y)
-  let linkedX := views.filter r'.isLinked |>.map fun j => (r'.view j).x
-  let desynced := linkedX.any fun x => x != r'.x.scale
-  let moved := match a with
-    | .input i _ => views.any fun j => j != i && (r'.view j).y != (r.view j).y
-    | .toggle i => views.any fun j => (r'.view j).y != (r.view j).y ||
-        (j != i && (r'.view j).x != (r.view j).x) || (!r'.isLinked i && r'.view i != r.view i)
-  let drift := match a with
-    | .input i (.wheel px py _) | .input i (.pinch px py _ _) =>
-      let before := View.cursor c (r.view i) px py
-      let after := View.cursor c (r'.view i) px py
-      !(Inkproof.Float.Float.near before.1 after.1 && Inkproof.Float.Float.near before.2 after.2)
-    | _ => false
-  if limits then some "zoom limit violated"
-  else if desynced then some "linked charts disagree on x"
-  else if drift then some "cursor moved under a zoom"
-  else if moved then some "an action moved a chart it did not address"
-  else none
-
-/-- Run `steps` random actions on `n` charts from `seed`; the first violation, with its step. A rig
-with no charts is reported, since it would check nothing. -/
-def run (c : ViewConfig Float) (n : Nat) (seed steps : Nat) : Option String :=
-  if hn : 0 < n then
-    let rec go : Nat → Rng → Linked Float n → Option String
-      | 0, _, _ => none
-      | k + 1, s, r =>
-        let (a, s) := action n hn s
-        let r' := match a with
-          | .input i inp => r.step c i inp
-          | .toggle i => if r.isLinked i then r.unlink i else r.relink i
-        match violation c r r' a with
-        | some e => some s!"step {steps - k}: {e}"
-        | none => go k s r'
-    go steps ⟨seed.toUInt64⟩ (home c n)
-  else some "no charts to check"
-
-end Robot
-
-private def robotConfig : Inkproof.Viewport.ViewConfig Float :=
-  let axis : Inkproof.Viewport.Interval.Config Float :=
-    { length := 800, minSpan := 0.5, maxSpan := 1000, home := ⟨0, 100⟩, keyZoom := 1.25, keyPan := 0.1 }
-  ⟨axis, { axis with length := 400 }⟩
-
 def robotTest : Except String Unit := do
   for seed in [1:101] do
-    if let some e := Robot.run robotConfig 4 seed 1000 then
-      check false s!"seed {seed}: {e}"
+    if let some e := Robot.runSeed seed then
+      check false e
 
 /-- A column of flat samples with one spike that is not the first sample: naive decimation draws the first sample and
 loses the spike, the guaranteed reduction keeps it, and switching back restores it. -/
@@ -479,8 +387,22 @@ private def rawTest : Except String Unit := do
     if v == Tiles.gapWord then none else some v
   check (back == xs.toList) "raw samples round trip, a gap as the gap word"
 
+open Inkproof.Demo in
+private def sourceTest (app : String) : Except String Unit := do
+  let lines := ["x", "-- chart: A", "a", "", "b", "-- end chart", "y", "-- chart: B", "c", "-- end chart", "-- chart: open", "d"]
+  check (Source.regions lines == [("A", ["a", "", "b"]), ("B", ["c"])]) "marked regions are read and an open one is dropped"
+  check (Source.length ["a", "", "  ", "b"] == 2) "blank lines are not counted"
+  let json := Source.toJson (String.intercalate "\n" lines)
+  check (Source.parse json == some [("A", "a\n\nb"), ("B", "c")]) "sources read back as written"
+  check (Source.parse "not json" == none) "text that is not JSON is refused"
+  let charts := Source.regions (app.splitOn "\n")
+  check (charts.length == 2) "the app marks its two charts"
+  for (name, b) in charts do
+    check (Source.length b <= 20) s!"the source of {name} is at most 20 lines, not {Source.length b}"
+
 def main (args : List String) : IO UInt32 := do
   let real ← IO.FS.readBinFile "fixtures/IU.ANMO.00.HHZ.excerpt.mseed"
+  let app ← IO.FS.readFile "../app/App.lean"
   runTests [⟨"theorem index", indexTest⟩, ⟨"page", htmlTest⟩, ⟨"tcb", tcbTest⟩, ⟨"input robot", robotTest⟩,
-    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"loaded tiles", loadedTest⟩, ⟨"manifest", manifestTest⟩, ⟨"raw files", rawTest'⟩, ⟨"catalogue", catalogueTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩,
+    ⟨"decimation", decimationTest⟩, ⟨"inspector", inspectorTest⟩, ⟨"stack", stackTest⟩, ⟨"tiles", tilesTest⟩, ⟨"loaded tiles", loadedTest⟩, ⟨"manifest", manifestTest⟩, ⟨"raw files", rawTest'⟩, ⟨"catalogue", catalogueTest⟩, ⟨"draw", drawTest⟩, ⟨"plot", plotTest⟩, ⟨"bound", boundTest⟩, ⟨"miniSEED", miniSeedTest real⟩, ⟨"place", placeTest⟩, ⟨"chunked build", chunkedTest⟩, ⟨"raw samples", rawTest⟩, ⟨"chart sources", sourceTest app⟩,
     platformTest (args.contains "--expect-wasm")]
