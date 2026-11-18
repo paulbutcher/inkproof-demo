@@ -177,17 +177,17 @@ def Inkproof.Demo.Place.startIndex : Nat → Nat → Inkproof.Demo.MiniSeed.Reco
 theorem Inkproof.Demo.Place.startIndex_same_day : ∀ (rate day : Nat) (r : Inkproof.Demo.MiniSeed.Record), r.day = day → Inkproof.Demo.Place.startIndex rate day r = r.tenthMs * rate / 10000
 def Inkproof.Demo.Plot.bins : Inkproof.Demo.View.Range → Nat → Inkproof.Core.Binning Nat
 theorem Inkproof.Demo.Plot.bins_columns : ∀ (r : Inkproof.Demo.View.Range) (cols : Nat), (Inkproof.Demo.Plot.bins r cols).columns = Max.max cols 1
-theorem Inkproof.Demo.Plot.mem_traces : ∀ (paint : Inkproof.Scene.Paint) (columns : Array (Array Inkproof.Demo.Seismic.Extent)) (height top : Nat) (c : Inkproof.Scene.Command), c ∈ Inkproof.Demo.Plot.traces paint columns height top ↔ ∃ cs i, (cs, i) ∈ columns.zipIdx ∧ c ∈ Inkproof.Scene.compileEnvelope paint (Inkproof.Demo.Plot.projection (i * height) height top) (Array.map Inkproof.Demo.Stack.span cs)
+theorem Inkproof.Demo.Plot.mem_traces : ∀ (paint : Inkproof.Scene.Paint) (columns : Array (Array Inkproof.Demo.Seismic.Extent)) (height : Nat) (tops : Array Nat) (c : Inkproof.Scene.Command), c ∈ Inkproof.Demo.Plot.traces paint columns height tops ↔ ∃ cs i, (cs, i) ∈ columns.zipIdx ∧ c ∈ Inkproof.Scene.compileEnvelope paint (Inkproof.Demo.Plot.projection (i * height) height (tops.getD i 1)) (Array.map Inkproof.Demo.Stack.span cs)
 def Inkproof.Demo.Plot.parseSrc : String → Option Inkproof.Demo.View.Range
 def Inkproof.Demo.Plot.projection : Nat → Nat → Nat → Inkproof.Scene.Projection Nat Int
 theorem Inkproof.Demo.Plot.projection_x : ∀ (y0 height top x : Nat), (Inkproof.Demo.Plot.projection y0 height top).x x = ↑x + 1 / 2
-theorem Inkproof.Demo.Plot.projection_y : ∀ (y0 height top : Nat) (v : Int), (Inkproof.Demo.Plot.projection y0 height top).y v = ↑y0 + ↑(Inkproof.Demo.Stack.pixelY height top v)
+theorem Inkproof.Demo.Plot.projection_y : ∀ (y0 height top : Nat) (v : Int), (Inkproof.Demo.Plot.projection y0 height top).y v = ↑y0 + ↑(Inkproof.Demo.Stack.pixelY height top v) + 1 / 2
 def Inkproof.Demo.Plot.quakes : Inkproof.Scene.ScatterStyle → Array Inkproof.Demo.Seismic.Quake → Inkproof.Demo.View.Range → Nat → Inkproof.Scene.DisplayList
 theorem Inkproof.Demo.Plot.quakes_getElem : ∀ (style : Inkproof.Scene.ScatterStyle) (qs : Array Inkproof.Demo.Seismic.Quake) (r : Inkproof.Demo.View.Range) (cols i : Nat) (h : i < Array.size (Inkproof.Demo.Plot.quakes style qs r cols)), (Inkproof.Demo.Plot.quakes style qs r cols)[i] = { layer := style.paint.layer, color := style.paint.color, shape := Inkproof.Scene.Shape.marker style.shape { x := ↑((Inkproof.Demo.Plot.bins r cols).col (Inkproof.Demo.View.inView r qs)[i].time) + 1 / 2, y := style.radius } style.radius }
 theorem Inkproof.Demo.Plot.size_quakes : ∀ (style : Inkproof.Scene.ScatterStyle) (qs : Array Inkproof.Demo.Seismic.Quake) (r : Inkproof.Demo.View.Range) (cols : Nat), Array.size (Inkproof.Demo.Plot.quakes style qs r cols) = (Inkproof.Demo.View.inView r qs).size
 def Inkproof.Demo.Plot.src : Inkproof.Demo.View.Range → String
 theorem Inkproof.Demo.Plot.src_eq : ∀ (r : Inkproof.Demo.View.Range), Inkproof.Demo.Plot.src r = ToString.toString r.lo ++ ToString.toString "-" ++ ToString.toString r.hi
-def Inkproof.Demo.Plot.traces : Inkproof.Scene.Paint → Array (Array Inkproof.Demo.Seismic.Extent) → Nat → Nat → Inkproof.Scene.DisplayList
+def Inkproof.Demo.Plot.traces : Inkproof.Scene.Paint → Array (Array Inkproof.Demo.Seismic.Extent) → Nat → Array Nat → Inkproof.Scene.DisplayList
 structure Inkproof.Demo.Raw.Piece : Type
 field Inkproof.Demo.Raw.Piece.first : Inkproof.Demo.Raw.Piece → Nat
 field Inkproof.Demo.Raw.Piece.len : Inkproof.Demo.Raw.Piece → Nat
@@ -235,6 +235,9 @@ def Inkproof.Demo.Series.points : Inkproof.Demo.Inspect.Decimation → List Inkp
 theorem Inkproof.Demo.Series.points_toList : ∀ (d : Inkproof.Demo.Inspect.Decimation) (xs : List Inkproof.Scene.Pt) (height top : Nat), (Inkproof.Demo.Series.points d xs height top).toList = [' '].intercalate (List.map String.toList (Inkproof.Demo.Series.coords d xs height top))
 def Inkproof.Demo.Series.samples : Nat → Nat → List Inkproof.Scene.Pt
 theorem Inkproof.Demo.Series.samples_length : ∀ (columns perColumn : Nat), (Inkproof.Demo.Series.samples columns perColumn).length = columns * perColumn
+theorem Inkproof.Demo.Stack.le_peak : ∀ (cs : Array Inkproof.Demo.Seismic.Extent) (e : Inkproof.Demo.Seismic.Extent), e ∈ cs → ∀ (a b : Int), Inkproof.Demo.Stack.span e = Option.some (a, b) → a.natAbs ≤ Inkproof.Demo.Stack.peak cs ∧ b.natAbs ≤ Inkproof.Demo.Stack.peak cs
+theorem Inkproof.Demo.Stack.one_le_peak : ∀ (cs : Array Inkproof.Demo.Seismic.Extent), 1 ≤ Inkproof.Demo.Stack.peak cs
+def Inkproof.Demo.Stack.peak : Array Inkproof.Demo.Seismic.Extent → Nat
 def Inkproof.Demo.Stack.pixelY : Nat → Nat → Int → Int
 def Inkproof.Demo.Stack.span : Inkproof.Demo.Seismic.Extent → Option (Int × Int)
 theorem Inkproof.Demo.Stack.span_eq_some : ∀ (e : Inkproof.Demo.Seismic.Extent) (a b : Int), Inkproof.Demo.Stack.span e = Option.some (a, b) ↔ e.fst.get = Option.some a ∧ e.snd.get = Option.some b

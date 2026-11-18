@@ -11,7 +11,7 @@ open Inkproof.Demo
 def rawDays (station : System.FilePath) : IO (Array Nat) := do
   let names := (← (station / "s0/raw").readDir).map (·.fileName)
   let days := names.filterMap fun n =>
-    if n.startsWith "d" && n.endsWith ".bin" then ((n.drop 1).dropRight 4).toNat? else none
+    if n.startsWith "d" && n.endsWith ".bin" then ((n.drop 1).dropEnd 4).toNat? else none
   return days.qsort (· < ·)
 
 def readJson (file : System.FilePath) : IO Lean.Json := do

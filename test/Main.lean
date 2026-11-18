@@ -289,7 +289,7 @@ private def columnsOf (p : Inkproof.Core.Pyramid Seismic.Extent) (lo hi cols : N
 
 private def envelopeItems (qs : Array (Inkproof.Core.Pyramid Seismic.Extent)) (n cols : Nat) :
     List (Inkproof.Scene.Item Inkproof.Scene.Column) :=
-  (Plot.traces ⟨0, ⟨0, 0, 0, 255⟩⟩ (qs.map (columnsOf · 0 n cols)) 200 1000).toList.flatMap fun c =>
+  (Plot.traces ⟨0, ⟨0, 0, 0, 255⟩⟩ (qs.map (columnsOf · 0 n cols)) 200 (qs.map fun _ => 1000)).toList.flatMap fun c =>
     match c.shape with | .envelope is => is | _ => []
 
 private def stackTest : Except String Unit := do
@@ -395,7 +395,7 @@ private def plotTest : Except String Unit := do
     check ((Plot.parseSrc (Plot.src r)).map (fun r => (r.lo, r.hi)) == some (lo, hi)) s!"{lo}-{hi}: src round trip"
     let gaps (items : List (Inkproof.Scene.Item Inkproof.Scene.Column)) := (items.filter fun | .gap => true | _ => false).length
     let spans := (columnsOf p lo hi 60).map Stack.span
-    let cmds := Plot.traces ⟨0, ⟨0, 0, 0, 255⟩⟩ #[columnsOf p lo hi 60] 100 1000
+    let cmds := Plot.traces ⟨0, ⟨0, 0, 0, 255⟩⟩ #[columnsOf p lo hi 60] 100 #[1000]
     let items := cmds.toList.flatMap fun c => match c.shape with | .envelope is => is | _ => []
     let present := (spans.filter (·.isSome)).size
     check ((items.filter fun | .val _ => true | _ => false).length == present) s!"{lo}-{hi}: every present column is drawn"

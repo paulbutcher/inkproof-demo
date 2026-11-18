@@ -10,25 +10,25 @@ namespace Inkproof.Demo.Plot
 
 open Inkproof.Core Inkproof.Scene Inkproof.Demo.Seismic Inkproof.Demo.View
 
-/-- The projection of a track starting at pixel row `y0`: pixel column `x` is centred at `x + 1/2`, and the highest value is the top edge. -/
+/-- The projection of a track starting at pixel row `y0`: pixel column `x` is centred at `x + 1/2`, a value lies at the centre of its pixel row so that a column of one value is drawn, and the highest value is in the top row. -/
 def projection (y0 height top : Nat) : Projection Nat Int where
   x := fun x => (x : Rat) + 1 / 2
-  y := fun v => y0 + Stack.pixelY height top v
+  y := fun v => y0 + Stack.pixelY height top v + 1 / 2
 
 theorem projection_x (y0 height top : Nat) (x : Nat) : (projection y0 height top).x x = (x : Rat) + 1 / 2 := rfl
 
 theorem projection_y (y0 height top : Nat) (v : Int) :
-    (projection y0 height top).y v = y0 + Stack.pixelY height top v := rfl
+    (projection y0 height top).y v = y0 + Stack.pixelY height top v + 1 / 2 := rfl
 
-/-- The stacked stations, each given as the extent of each of its pixel columns and drawn in a track `height` pixels tall, a gap wherever a station recorded nothing for at least one pixel column. -/
-def traces (paint : Paint) (columns : Array (Array Extent)) (height top : Nat) : DisplayList :=
+/-- The stacked stations, each given as the extent of each of its pixel columns and drawn in a track `height` pixels tall whose values reach `tops[i]` from zero, a gap wherever a station recorded nothing for at least one pixel column. -/
+def traces (paint : Paint) (columns : Array (Array Extent)) (height : Nat) (tops : Array Nat) : DisplayList :=
   columns.zipIdx.flatMap fun (cs, i) =>
-    compileEnvelope paint (projection (i * height) height top) (cs.map Stack.span)
+    compileEnvelope paint (projection (i * height) height (tops.getD i 1)) (cs.map Stack.span)
 
-theorem mem_traces (paint : Paint) (columns : Array (Array Extent)) (height top : Nat) (c : Command) :
-    c ∈ traces paint columns height top ↔
+theorem mem_traces (paint : Paint) (columns : Array (Array Extent)) (height : Nat) (tops : Array Nat) (c : Command) :
+    c ∈ traces paint columns height tops ↔
       ∃ cs i, (cs, i) ∈ columns.zipIdx ∧
-        c ∈ compileEnvelope paint (projection (i * height) height top) (cs.map Stack.span) := by
+        c ∈ compileEnvelope paint (projection (i * height) height (tops.getD i 1)) (cs.map Stack.span) := by
   simp [traces]
 
 /-- The pixel columns of `cols` across the samples `r`, the sample `t` falling in column `(bins r cols).col t`. -/

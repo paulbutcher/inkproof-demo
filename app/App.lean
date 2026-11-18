@@ -12,7 +12,6 @@ open Lasm.UI Inkproof.Web.Host Inkproof.Demo Inkproof.Demo.Inspect Inkproof.Demo
 
 def chartCols : Nat := 400
 def trackHeight : Nat := 100
-def chartHeight : Nat := 200
 
 def axisConfig (sampleCount : Nat) : Interval.Config Rat :=
   { length := chartCols, minSpan := 2, maxSpan := sampleCount, home := ⟨0, sampleCount⟩, keyZoom := 2, keyPan := 1 / 4 }
@@ -122,21 +121,21 @@ def sceneOf (cache : TileCache Seismic.Extent) (manifest : IO.Ref (Option Manife
     catch _ =>
       -- The failure is already logged; an empty track would read as an outage, so say what happened.
       cols := cols.push (Array.replicate chartCols (⟨none⟩, ⟨none⟩))
-      labels := labels.push { text := s!"station {s + 1}: tiles failed to load", x := 8, y := 14 + Float.ofNat (s * chartHeight / stations), color := "#b00020" }
+      labels := labels.push { text := s!"station {s + 1}: tiles failed to load", x := 8, y := 14 + Float.ofNat (s * trackHeight), color := "#b00020" }
   -- A catalogue that failed to load is logged and labelled, never drawn as a quiet period.
   let quakes ← try loadCatalogue catalogue catch _ =>
-    labels := labels.push { text := "catalogue failed to load", x := 8, y := Float.ofNat chartHeight - 6, color := "#b00020" }
+    labels := labels.push { text := "catalogue failed to load", x := 8, y := Float.ofNat (trackHeight * stations) - 6, color := "#b00020" }
     pure #[]
-  let list := Plot.traces tracePaint cols trackHeight 1000 ++ Plot.quakes quakeStyle quakes r chartCols
+  let list := Plot.traces tracePaint cols trackHeight (cols.map Stack.peak) ++ Plot.quakes quakeStyle quakes r chartCols
   return { commands := Draw.bytes chartCols (trackHeight * stations) list, labels }
 
 def linkedCharts : Nat := 8
 
 def deepest : Nat := 3000000000
 
-def stacked (r : Range) (i : Nat) : Html Msg :=
+def stacked (stations : Nat) (r : Range) (i : Nat) : Html Msg :=
   node "inkproof-chart" [attr "id" (if i == 0 then "stack" else s!"stack-{i}"), attr "class" "linked",
-    attr "src" (Plot.src r), attr "style" s!"width:{chartCols}px;height:{chartHeight}px"] []
+    attr "src" (Plot.src r), attr "style" s!"width:{chartCols}px;height:{trackHeight * stations}px"] []
 
 def errorBound (r : Range) : String :=
   s!"Placement error at most {Bound.micro (Bound.pixelError r chartCols deepest)} millionths of a pixel anywhere in a {deepest} sample recording, by {Bound.theoremName}, provided every intermediate product and sum stays in the normal floating-point range (its NormalRange hypotheses)"
@@ -144,6 +143,7 @@ def errorBound (r : Range) : String :=
 def view (m : Model) : Html Msg :=
   let reading := inspect series m.column
   let sampleCount := m.sampleCount
+  let stations := (m.manifest.map (·.stations.size)).getD 0
   main_ [] [
     p [attr "id" "status"] [.text (m.failure.getD (if m.manifest.isSome then "" else "Loading tiles"))],
     div [] [
@@ -152,7 +152,7 @@ def view (m : Model) : Html Msg :=
       button [onClick .panLeft, attr "id" "pan-left"] [.text "Left"],
       button [onClick .panRight, attr "id" "pan-right"] [.text "Right"],
       span [attr "id" "range"] [.text s!"samples {(Range.ofInterval sampleCount m.view.x).lo} to {(Range.ofInterval sampleCount m.view.x).hi}"]],
-    div [attr "id" "charts"] (if m.manifest.isSome then (List.range linkedCharts).map (stacked (Range.ofInterval sampleCount m.view.x)) else []),
+    div [attr "id" "charts"] (if m.manifest.isSome then (List.range linkedCharts).map (stacked stations (Range.ofInterval sampleCount m.view.x)) else []),
     p [attr "id" "error-bound"] [.text (errorBound (Range.ofInterval sampleCount m.view.x))],
     button [onClick .toggle, attr "id" "toggle"] [.text s!"Decimation: {modeName m.mode}"],
     Svg.svg [attr "id" "chart", attr "viewBox" "0 0 200 100", attr "width" "800", attr "height" "400"]

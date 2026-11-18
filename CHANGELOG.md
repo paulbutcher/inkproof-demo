@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.5.0
+
+- Each station's track is scaled to the largest value in view.
+- The tiles above level 12 of a real recording are written correctly.
+
 ## v0.4.0
 
 - Tiles are read with Web's queryColumnsFrom and TileCache, and the finest zooms from raw day files by byte range.
