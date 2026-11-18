@@ -3,6 +3,7 @@
 ## v0.5.0
 
 - Each station's track is scaled to the largest value in view.
+- The tests compare floats with inkproof-float's Float.near.
 - The tiles above level 12 of a real recording are written correctly.
 - The input robot runs in the browser app under Lasm, one seed at a time, and is checked in the browser tests.
 
