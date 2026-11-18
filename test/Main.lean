@@ -7,6 +7,7 @@ import Inkproof.Demo.Place
 import Inkproof.Viewport
 import Inkproof.Viewport.Proofs
 import Inkproof.Scene
+import Inkproof.Float
 import Inkproof.Gpu
 import Inkproof.Core.Proofs
 import InkproofTools.Test.Harness
@@ -143,10 +144,6 @@ def action (n : Nat) (hn : 0 < n) (s : Rng) : Action n × Rng :=
    | 8 => .input i (.set (a - 400) (c - 400) (b - 200) (d - 200))
    | _ => .input i .reset, s)
 
-def near (a b : Float) : Bool := (a - b).abs ≤ 1e-6 * (1 + a.abs + b.abs)
-
-theorem near_eq (a b : Float) : near a b = decide ((a - b).abs ≤ 1e-6 * (1 + a.abs + b.abs)) := rfl
-
 private def within (c : Interval.Config Float) (a : Interval Float) : Bool :=
   c.minSpan ≤ a.span && a.span ≤ c.maxSpan
 
@@ -165,7 +162,7 @@ def violation {n : Nat} (c : ViewConfig Float) (r r' : Linked Float n) (a : Acti
     | .input i (.wheel px py _) | .input i (.pinch px py _ _) =>
       let before := View.cursor c (r.view i) px py
       let after := View.cursor c (r'.view i) px py
-      !(near before.1 after.1 && near before.2 after.2)
+      !(Inkproof.Float.Float.near before.1 after.1 && Inkproof.Float.Float.near before.2 after.2)
     | _ => false
   if limits then some "zoom limit violated"
   else if desynced then some "linked charts disagree on x"
