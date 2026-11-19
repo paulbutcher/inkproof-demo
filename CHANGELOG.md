@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.1
+
+- The README gives numbered steps from a fresh clone to the page, for the slice and the quarter.
+
 ## v0.5.0
 
 - Each station's track is scaled to the largest value in view.
