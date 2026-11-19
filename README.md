@@ -23,29 +23,51 @@ The public modules under `Inkproof/Demo/`, by job:
 - Find the file and line declaring a proved theorem in the library sources: `locate`, `declarationLine`.
 - Choose how the code panel labels a file: `CodeKind.ofNat`, `CodeKind.matches`.
 
-## Data
+## Build and run
 
-The demo charts public seismic recordings and earthquakes. Fetching is a separate step from building, and nothing here runs it for you.
+Needs git, Node 24 or later, [elan](https://github.com/leanprover/elan) (it installs the toolchain in `lean-toolchain`), a browser with WebGL and network access. Run from the repository root. Times are from an 18-core machine.
 
-1. Fetch: `node scripts/fetch.mjs [--data <dir>] [--quarter] [--days <n>]`. The data directory defaults to the git-ignored `data/`. By default it fetches one station for one week (`scripts/selection.json`); `--quarter` fetches the pinned four stations for the 90 days from 2025-03-01, about 3 GB of miniSEED. Days already on disk are skipped, so rerun it to resume an interrupted fetch. Only Node 24 is needed.
-2. Build tiles: `lake exe build-real-tiles <miniSEED station dir> <output dir>` cuts one station's day files into tiles. Peak memory is about 560 MiB for one day, 580 MiB for a week and 0.9 to 1.2 GiB for each of the four stations over the 90 days (peak resident size), because it works in chunks of 2^20 samples and not the whole recording; it stops growing between a week and 20 days. A station takes two to eleven minutes and about 3 GB of tiles.
-3. Describe the tile set: `lake exe build-manifest <site dir> <station tile dir>...` writes the site's `manifest.json` from the stations' manifests and raw day files; link each station's `s0` as `<site dir>/s<i>`.
-4. Build the catalogue: `lake exe build-catalogue <data>/catalogue/<range>.csv <output dir>` writes `catalogue.json` next to the tiles, placing each quake on the tiles' sample grid from the `recording.json` that step 2 wrote. It holds the catalogue (a few thousand rows) in memory and nothing else.
-5. Serve: the static site from local disk.
+The slice, one station for one week (0.3 GB of disk, about ten minutes, about 580 MiB peak memory):
+
+```sh
+git clone https://github.com/paulbutcher/inkproof-demo.git && cd inkproof-demo
+lake build
+npm ci && (cd app && npm ci)
+node scripts/fetch.mjs                    # resumes if interrupted
+lake exe build-real-tiles data/mseed/IU.ANMO.00.HHZ data/tiles/IU.ANMO.00.HHZ
+mkdir -p data/site && ln -s ../tiles/IU.ANMO.00.HHZ/s0 data/site/s0
+lake exe build-manifest data/site data/tiles/IU.ANMO.00.HHZ
+cp data/tiles/IU.ANMO.00.HHZ/recording.json data/site/
+lake exe build-catalogue data/catalogue/2025-03-01_7.csv data/site
+mkdir -p app/web/public && lake exe build-sources app/App.lean app/web/public/chart-sources.json
+cd app && LASM_EDITOR=0 npx vite build    # LASM_EDITOR=0 stops an elan override breaking Lasm
+rm -rf dist/tiles && ln -s ../../data/site dist/tiles && npx vite preview
+```
+
+Open http://localhost:4173/: one trace with a few earthquake markers.
+
+The quarter, four stations for 90 days, needs 15 GB of disk (3 GB of miniSEED, 12 GB of tiles). After the slice's `lake build`, `npm ci` and `build-sources`, from the root:
+
+```sh
+rm -rf data/tiles data/site && node scripts/fetch.mjs --quarter    # about ten minutes
+for s in ANMO COLA KONO MAJO; do lake exe build-real-tiles data/mseed/IU.$s.00.HHZ data/tiles/IU.$s.00.HHZ; done
+mkdir data/site && i=0 && for s in ANMO COLA KONO MAJO; do ln -s ../tiles/IU.$s.00.HHZ/s0 data/site/s$i; i=$((i+1)); done
+lake exe build-manifest data/site data/tiles/IU.{ANMO,COLA,KONO,MAJO}.00.HHZ
+cp data/tiles/IU.ANMO.00.HHZ/recording.json data/site/ && lake exe build-catalogue data/catalogue/2025-03-01_90.csv data/site
+cd app && LASM_EDITOR=0 npx vite build && rm -rf dist/tiles && ln -s ../../data/site dist/tiles && npx vite preview
+```
+
+Each station's tiles take two to eleven minutes and peak at 0.9 to 1.2 GiB resident, since they are cut in chunks of 2^20 samples; memory stops growing past about 20 days.
 
 ## Looking at the quarter
 
-With the quarter fetched and the four stations' tiles built (steps 1 and 2 above, `--quarter`), build `data/site` with step 3 and 4 (`recording.json` is copied from the first station's tile directory), then `cd app && npx vite build`, replace `dist/tiles` with a link to `data/site` and run `npx vite preview`. In the page:
+In the page:
 
 - Four stacked station traces with the earthquake markers along the top: zoom in and out and pan with the buttons, from the whole quarter down to individual samples. Each track is scaled to the largest value in view.
 - Station outages are blank stretches in a track, for instance ANMO on days 81 to 83 (zoom to 2025-03-22).
 - A tile that fails to load is labelled in red on the chart and logged at warn.
 - The placement error bound is shown under the charts, with the theorem that proves it and its normal-range condition.
 - `INKPROOF_SITE=../data/site node --test quarter.test.mjs` in `app/` checks that every catalogued quake has a marker at three zooms after a jump to it, and that each station's outages are gaps, against the real tiles.
-
-## Building the browser app
-
-Run Lasm with `LASM_EDITOR=0`, as in `LASM_EDITOR=0 npx lasm build` from `app/`, or it applies an elan override that breaks the build. Install the packages first with `npm ci` in `app/`, `test/` and the repository root.
 
 ## Attribution
 
